@@ -2,6 +2,10 @@
 
 Formato versione: **V.maior.minor.patch** (fonte unica: `version.js`).
 
+## V.0.1.1 — 2026-11-03
+- Collegata al progetto Supabase "Notes" (Frankfurt).
+- Pubblicazione su GitHub Pages: https://galimbertip.github.io/Notes/
+
 ## V.0.1.0 — 2026-11-02
 Prima versione.
 - Accesso con email + password o link via email (Supabase Auth), account multipli: ognuno vede solo i propri appunti (RLS).
