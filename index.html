@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#06090d">
+  <title>GPverse Notes</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/favicon.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="version.js"></script>
+</head>
+<body>
+
+<!-- ═════════ Login ═════════ -->
+<section id="authView" class="auth" hidden>
+  <div class="auth-card">
+    <img src="icons/icon-192.png" alt="" class="auth-logo">
+    <h1 class="brand">GPVERSE <span>NOTES</span></h1>
+    <p class="muted" data-i18n="tagline"></p>
+
+    <form id="authForm" autocomplete="on">
+      <label><span data-i18n="email"></span>
+        <input type="email" id="authEmail" required autocomplete="email"></label>
+      <label><span data-i18n="password"></span>
+        <input type="password" id="authPassword" minlength="6" autocomplete="current-password"></label>
+      <button type="submit" class="btn primary" id="authSubmit" data-i18n="signIn"></button>
+    </form>
+    <button class="btn ghost" id="authMagic" data-i18n="magicLink"></button>
+    <button class="link" id="authToggle" data-i18n="noAccount"></button>
+    <p id="authMsg" class="msg" role="status"></p>
+
+    <select id="authLang" class="lang-select" aria-label="Language"></select>
+  </div>
+  <footer class="ver-footer">GPverse Notes · <span class="app-version"></span></footer>
+</section>
+
+<!-- ═════════ App ═════════ -->
+<div id="appView" class="app" hidden>
+  <header class="topbar">
+    <button class="icon-btn only-mobile" id="menuBtn" data-i18n-title="menu">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <div class="brand-mini"><img src="icons/mark-96.png" alt=""><span>GPVERSE <b>NOTES</b></span></div>
+    <span class="spacer"></span>
+    <span id="netState" class="net"></span>
+    <select id="langSelect" class="lang-select" aria-label="Language"></select>
+    <button class="btn ghost small" id="signOutBtn" data-i18n="signOut"></button>
+  </header>
+
+  <aside class="sidebar" id="sidebar">
+    <button class="btn primary block" id="newNoteBtn">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="newNote"></span>
+    </button>
+    <input type="search" id="searchInput" class="search" data-i18n-ph="search">
+    <ul id="noteList" class="note-list"></ul>
+    <div class="sidebar-foot">
+      <span id="userEmail" class="muted small-text"></span>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <main class="main">
+    <div id="emptyState" class="empty"><p data-i18n="pickNote"></p></div>
+
+    <div id="editor" class="editor" hidden>
+      <div class="editor-head">
+        <input id="noteTitle" class="title-input" data-i18n-ph="titlePh">
+        <span id="saveState" class="save-state"></span>
+        <button class="icon-btn danger" id="deleteNoteBtn" data-i18n-title="deleteNote">
+          <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+        </button>
+      </div>
+
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="text" role="tab">
+          <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span data-i18n="tabText"></span></button>
+        <button class="tab" data-tab="draw" role="tab">
+          <svg viewBox="0 0 24 24"><path d="M3 21l3-1 12-12-2-2L4 18zM14 6l2 2"/></svg><span data-i18n="tabDraw"></span></button>
+        <button class="tab" data-tab="audio" role="tab">
+          <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg><span data-i18n="tabAudio"></span>
+          <i id="recDot" class="rec-dot" hidden></i></button>
+      </nav>
+
+      <!-- Testo -->
+      <section class="panel" data-panel="text">
+        <textarea id="noteBody" class="body-input" data-i18n-ph="bodyPh"></textarea>
+      </section>
+
+      <!-- Mano libera -->
+      <section class="panel" data-panel="draw" hidden>
+        <div class="draw-toolbar">
+          <div class="seg">
+            <button class="tool active" data-tool="pen" data-i18n-title="pen">
+              <svg viewBox="0 0 24 24"><path d="M3 21l3-1 12-12-2-2L4 18z"/></svg></button>
+            <button class="tool" data-tool="highlighter" data-i18n-title="highlighter">
+              <svg viewBox="0 0 24 24"><path d="M9 15l-3 6h6l1-3M9 15l8-11 3 3-8 11z"/></svg></button>
+            <button class="tool" data-tool="eraser" data-i18n-title="eraser">
+              <svg viewBox="0 0 24 24"><path d="M8 20h12M5 15l9-9 5 5-8 8H8z"/></svg></button>
+          </div>
+          <div class="swatches" id="swatches"></div>
+          <label class="size-ctl"><span data-i18n="size"></span>
+            <input type="range" id="penSize" min="1" max="12" value="3"></label>
+          <label class="check"><input type="checkbox" id="penOnly"><span data-i18n="penOnly"></span></label>
+          <span class="spacer"></span>
+          <button class="icon-btn" id="undoBtn" data-i18n-title="undo">
+            <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3"/></svg></button>
+          <button class="icon-btn" id="moreSpaceBtn" data-i18n-title="moreSpace">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></svg></button>
+          <button class="icon-btn danger" id="clearDrawBtn" data-i18n-title="clear">
+            <svg viewBox="0 0 24 24"><path d="M4 7h16M6 7l1 13h10l1-13"/></svg></button>
+        </div>
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="drawCanvas"></canvas>
+        </div>
+      </section>
+
+      <!-- Audio -->
+      <section class="panel audio-panel" data-panel="audio" hidden>
+        <div class="rec-box">
+          <button class="rec-btn" id="recBtn">
+            <span class="rec-icon"></span><span id="recLabel" data-i18n="record"></span>
+          </button>
+          <div class="rec-meta">
+            <div class="timer" id="recTimer">00:00</div>
+            <label class="speech-lang"><span data-i18n="speechLang"></span>
+              <select id="speechLang"></select></label>
+          </div>
+          <canvas id="levelMeter" class="meter" width="300" height="40"></canvas>
+        </div>
+        <p class="hint muted" data-i18n="consentHint"></p>
+        <p class="hint warn" id="speechWarn" hidden data-i18n="noSpeechApi"></p>
+
+        <div class="live" id="liveBox" hidden>
+          <h3 data-i18n="liveTranscript"></h3>
+          <div id="liveText" class="live-text"></div>
+        </div>
+
+        <h3 class="section-title" data-i18n="recordings"></h3>
+        <div id="recList" class="rec-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="ver-footer app-foot">GPverse Notes · <span class="app-version"></span></footer>
+</div>
+
+<div id="toast" class="toast" role="status"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

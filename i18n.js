@@ -1,0 +1,202 @@
+// GPverse Notes — testi dell'interfaccia (multilingua).
+// Per aggiungere una lingua: copia il blocco "it", traduci e aggiungi il codice in LANGS.
+
+export const LANGS = { it: "Italiano", en: "English", de: "Deutsch", fr: "Français", es: "Español" };
+
+// Lingue proposte per la trascrizione vocale (codici BCP-47).
+export const SPEECH_LANGS = {
+  "it-IT": "Italiano", "en-US": "English (US)", "en-GB": "English (UK)", "de-DE": "Deutsch",
+  "fr-FR": "Français", "es-ES": "Español", "pt-PT": "Português", "ro-RO": "Română",
+  "pl-PL": "Polski", "ar-SA": "العربية", "zh-CN": "中文", "uk-UA": "Українська",
+};
+
+const STR = {
+  it: {
+    tagline: "Appunti a tastiera, a mano libera e a voce",
+    email: "Email", password: "Password",
+    signIn: "Accedi", signUp: "Crea account", magicLink: "Inviami un link di accesso",
+    haveAccount: "Hai già un account? Accedi", noAccount: "Non hai un account? Registrati",
+    checkEmail: "Controlla la tua email per completare l'accesso.",
+    signUpDone: "Account creato. Conferma l'indirizzo dalla email che hai ricevuto, poi accedi.",
+    signOut: "Esci",
+    notConfigured: "App non ancora collegata a Supabase: compila config.js (vedi README).",
+    newNote: "Nuova nota", search: "Cerca…", untitled: "Senza titolo",
+    noNotes: "Nessuna nota. Creane una!", pickNote: "Seleziona o crea una nota",
+    titlePh: "Titolo della nota", bodyPh: "Scrivi qui i tuoi appunti…",
+    tabText: "Testo", tabDraw: "Mano libera", tabAudio: "Audio",
+    deleteNote: "Elimina nota", confirmDelete: "Eliminare questa nota con disegni e registrazioni?",
+    saved: "Salvato", saving: "Salvataggio…", offlineSaved: "Offline: salvato sul dispositivo",
+    pen: "Penna", highlighter: "Evidenziatore", eraser: "Gomma", undo: "Annulla",
+    clear: "Cancella tutto", confirmClear: "Cancellare tutto il disegno?",
+    penOnly: "Solo penna (il dito scorre)", moreSpace: "Più spazio", size: "Spessore",
+    record: "Registra", stop: "Stop", recording: "Registrazione in corso",
+    speechLang: "Lingua del parlato", liveTranscript: "Trascrizione live",
+    noSpeechApi: "Trascrizione live non supportata da questo browser: l'audio viene comunque registrato.",
+    micDenied: "Permesso microfono negato.",
+    recordings: "Registrazioni", noRecordings: "Nessuna registrazione in questa nota.",
+    pendingUpload: "In attesa di caricamento", uploadFailed: "Caricamento non riuscito, riprovo più tardi",
+    deleteRec: "Elimina registrazione", confirmDeleteRec: "Eliminare questa registrazione?",
+    noTranscript: "Nessuna trascrizione.", copyTranscript: "Copia trascrizione",
+    copied: "Copiato", insertInText: "Inserisci nel testo",
+    consentHint: "Ricorda di chiedere il permesso prima di registrare una lezione.",
+    online: "Online", offline: "Offline", menu: "Menu", language: "Lingua",
+    error: "Errore", loading: "Caricamento…",
+  },
+  en: {
+    tagline: "Notes by keyboard, by hand and by voice",
+    email: "Email", password: "Password",
+    signIn: "Sign in", signUp: "Create account", magicLink: "Email me a sign-in link",
+    haveAccount: "Already have an account? Sign in", noAccount: "No account? Sign up",
+    checkEmail: "Check your email to finish signing in.",
+    signUpDone: "Account created. Confirm your address from the email you received, then sign in.",
+    signOut: "Sign out",
+    notConfigured: "App not connected to Supabase yet: fill in config.js (see README).",
+    newNote: "New note", search: "Search…", untitled: "Untitled",
+    noNotes: "No notes yet. Create one!", pickNote: "Select or create a note",
+    titlePh: "Note title", bodyPh: "Write your notes here…",
+    tabText: "Text", tabDraw: "Handwriting", tabAudio: "Audio",
+    deleteNote: "Delete note", confirmDelete: "Delete this note with its drawings and recordings?",
+    saved: "Saved", saving: "Saving…", offlineSaved: "Offline: saved on this device",
+    pen: "Pen", highlighter: "Highlighter", eraser: "Eraser", undo: "Undo",
+    clear: "Clear all", confirmClear: "Clear the whole drawing?",
+    penOnly: "Pen only (finger scrolls)", moreSpace: "More space", size: "Size",
+    record: "Record", stop: "Stop", recording: "Recording",
+    speechLang: "Spoken language", liveTranscript: "Live transcript",
+    noSpeechApi: "Live transcription isn't supported in this browser: audio is still recorded.",
+    micDenied: "Microphone permission denied.",
+    recordings: "Recordings", noRecordings: "No recordings in this note.",
+    pendingUpload: "Waiting to upload", uploadFailed: "Upload failed, will retry later",
+    deleteRec: "Delete recording", confirmDeleteRec: "Delete this recording?",
+    noTranscript: "No transcript.", copyTranscript: "Copy transcript",
+    copied: "Copied", insertInText: "Insert into text",
+    consentHint: "Remember to ask permission before recording a lesson.",
+    online: "Online", offline: "Offline", menu: "Menu", language: "Language",
+    error: "Error", loading: "Loading…",
+  },
+  de: {
+    tagline: "Notizen per Tastatur, Hand und Stimme",
+    email: "E-Mail", password: "Passwort",
+    signIn: "Anmelden", signUp: "Konto erstellen", magicLink: "Anmeldelink per E-Mail senden",
+    haveAccount: "Schon ein Konto? Anmelden", noAccount: "Kein Konto? Registrieren",
+    checkEmail: "Prüfe deine E-Mails, um die Anmeldung abzuschließen.",
+    signUpDone: "Konto erstellt. Bestätige die Adresse über die erhaltene E-Mail und melde dich dann an.",
+    signOut: "Abmelden",
+    notConfigured: "App noch nicht mit Supabase verbunden: config.js ausfüllen (siehe README).",
+    newNote: "Neue Notiz", search: "Suchen…", untitled: "Ohne Titel",
+    noNotes: "Noch keine Notizen. Erstelle eine!", pickNote: "Notiz auswählen oder erstellen",
+    titlePh: "Titel der Notiz", bodyPh: "Schreibe hier deine Notizen…",
+    tabText: "Text", tabDraw: "Handschrift", tabAudio: "Audio",
+    deleteNote: "Notiz löschen", confirmDelete: "Diese Notiz mit Zeichnungen und Aufnahmen löschen?",
+    saved: "Gespeichert", saving: "Speichern…", offlineSaved: "Offline: auf dem Gerät gespeichert",
+    pen: "Stift", highlighter: "Marker", eraser: "Radierer", undo: "Rückgängig",
+    clear: "Alles löschen", confirmClear: "Die ganze Zeichnung löschen?",
+    penOnly: "Nur Stift (Finger scrollt)", moreSpace: "Mehr Platz", size: "Stärke",
+    record: "Aufnehmen", stop: "Stopp", recording: "Aufnahme läuft",
+    speechLang: "Gesprochene Sprache", liveTranscript: "Live-Transkript",
+    noSpeechApi: "Live-Transkription wird in diesem Browser nicht unterstützt: Audio wird trotzdem aufgenommen.",
+    micDenied: "Mikrofonzugriff verweigert.",
+    recordings: "Aufnahmen", noRecordings: "Keine Aufnahmen in dieser Notiz.",
+    pendingUpload: "Wartet auf Upload", uploadFailed: "Upload fehlgeschlagen, neuer Versuch später",
+    deleteRec: "Aufnahme löschen", confirmDeleteRec: "Diese Aufnahme löschen?",
+    noTranscript: "Kein Transkript.", copyTranscript: "Transkript kopieren",
+    copied: "Kopiert", insertInText: "In den Text einfügen",
+    consentHint: "Frage vor der Aufnahme eines Unterrichts um Erlaubnis.",
+    online: "Online", offline: "Offline", menu: "Menü", language: "Sprache",
+    error: "Fehler", loading: "Laden…",
+  },
+  fr: {
+    tagline: "Notes au clavier, à main levée et à la voix",
+    email: "E-mail", password: "Mot de passe",
+    signIn: "Se connecter", signUp: "Créer un compte", magicLink: "M'envoyer un lien de connexion",
+    haveAccount: "Déjà un compte ? Se connecter", noAccount: "Pas de compte ? S'inscrire",
+    checkEmail: "Vérifie ta boîte mail pour terminer la connexion.",
+    signUpDone: "Compte créé. Confirme l'adresse via l'e-mail reçu, puis connecte-toi.",
+    signOut: "Se déconnecter",
+    notConfigured: "App pas encore reliée à Supabase : remplis config.js (voir README).",
+    newNote: "Nouvelle note", search: "Rechercher…", untitled: "Sans titre",
+    noNotes: "Aucune note. Crées-en une !", pickNote: "Choisis ou crée une note",
+    titlePh: "Titre de la note", bodyPh: "Écris tes notes ici…",
+    tabText: "Texte", tabDraw: "Main levée", tabAudio: "Audio",
+    deleteNote: "Supprimer la note", confirmDelete: "Supprimer cette note avec ses dessins et enregistrements ?",
+    saved: "Enregistré", saving: "Enregistrement…", offlineSaved: "Hors ligne : enregistré sur l'appareil",
+    pen: "Stylo", highlighter: "Surligneur", eraser: "Gomme", undo: "Annuler",
+    clear: "Tout effacer", confirmClear: "Effacer tout le dessin ?",
+    penOnly: "Stylet seul (le doigt fait défiler)", moreSpace: "Plus d'espace", size: "Épaisseur",
+    record: "Enregistrer", stop: "Stop", recording: "Enregistrement en cours",
+    speechLang: "Langue parlée", liveTranscript: "Transcription en direct",
+    noSpeechApi: "Transcription en direct non prise en charge par ce navigateur : l'audio est quand même enregistré.",
+    micDenied: "Accès au micro refusé.",
+    recordings: "Enregistrements", noRecordings: "Aucun enregistrement dans cette note.",
+    pendingUpload: "En attente d'envoi", uploadFailed: "Échec de l'envoi, nouvel essai plus tard",
+    deleteRec: "Supprimer l'enregistrement", confirmDeleteRec: "Supprimer cet enregistrement ?",
+    noTranscript: "Aucune transcription.", copyTranscript: "Copier la transcription",
+    copied: "Copié", insertInText: "Insérer dans le texte",
+    consentHint: "Pense à demander l'autorisation avant d'enregistrer un cours.",
+    online: "En ligne", offline: "Hors ligne", menu: "Menu", language: "Langue",
+    error: "Erreur", loading: "Chargement…",
+  },
+  es: {
+    tagline: "Apuntes con teclado, a mano y por voz",
+    email: "Correo", password: "Contraseña",
+    signIn: "Entrar", signUp: "Crear cuenta", magicLink: "Envíame un enlace de acceso",
+    haveAccount: "¿Ya tienes cuenta? Entra", noAccount: "¿No tienes cuenta? Regístrate",
+    checkEmail: "Revisa tu correo para completar el acceso.",
+    signUpDone: "Cuenta creada. Confirma la dirección desde el correo recibido y luego entra.",
+    signOut: "Salir",
+    notConfigured: "La app aún no está conectada a Supabase: completa config.js (ver README).",
+    newNote: "Nueva nota", search: "Buscar…", untitled: "Sin título",
+    noNotes: "Aún no hay notas. ¡Crea una!", pickNote: "Elige o crea una nota",
+    titlePh: "Título de la nota", bodyPh: "Escribe aquí tus apuntes…",
+    tabText: "Texto", tabDraw: "A mano", tabAudio: "Audio",
+    deleteNote: "Eliminar nota", confirmDelete: "¿Eliminar esta nota con sus dibujos y grabaciones?",
+    saved: "Guardado", saving: "Guardando…", offlineSaved: "Sin conexión: guardado en el dispositivo",
+    pen: "Bolígrafo", highlighter: "Resaltador", eraser: "Goma", undo: "Deshacer",
+    clear: "Borrar todo", confirmClear: "¿Borrar todo el dibujo?",
+    penOnly: "Solo lápiz (el dedo desplaza)", moreSpace: "Más espacio", size: "Grosor",
+    record: "Grabar", stop: "Parar", recording: "Grabando",
+    speechLang: "Idioma hablado", liveTranscript: "Transcripción en directo",
+    noSpeechApi: "Este navegador no admite transcripción en directo: el audio se graba igualmente.",
+    micDenied: "Permiso de micrófono denegado.",
+    recordings: "Grabaciones", noRecordings: "No hay grabaciones en esta nota.",
+    pendingUpload: "Pendiente de subir", uploadFailed: "Error al subir, se reintentará",
+    deleteRec: "Eliminar grabación", confirmDeleteRec: "¿Eliminar esta grabación?",
+    noTranscript: "Sin transcripción.", copyTranscript: "Copiar transcripción",
+    copied: "Copiado", insertInText: "Insertar en el texto",
+    consentHint: "Recuerda pedir permiso antes de grabar una clase.",
+    online: "En línea", offline: "Sin conexión", menu: "Menú", language: "Idioma",
+    error: "Error", loading: "Cargando…",
+  },
+};
+
+let current = "it";
+
+export function detectLang() {
+  try {
+    const saved = localStorage.getItem("gpv.lang");
+    if (saved && STR[saved]) return saved;
+  } catch {}
+  const nav = (navigator.language || "it").slice(0, 2).toLowerCase();
+  return STR[nav] ? nav : "it";
+}
+
+export function setLang(lang) {
+  current = STR[lang] ? lang : "it";
+  try { localStorage.setItem("gpv.lang", current); } catch {}
+  document.documentElement.lang = current;
+  applyI18n(document);
+}
+
+export function getLang() { return current; }
+
+export function t(key) {
+  return (STR[current] && STR[current][key]) ?? STR.it[key] ?? key;
+}
+
+export function applyI18n(root) {
+  root.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  root.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  root.querySelectorAll("[data-i18n-title]").forEach(el => {
+    el.title = t(el.dataset.i18nTitle);
+    el.setAttribute("aria-label", t(el.dataset.i18nTitle));
+  });
+}
