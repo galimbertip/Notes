@@ -2,11 +2,11 @@
 importScripts("version.js");
 const CACHE = `gpverse-notes-${self.GPV_VERSION}`;
 const SHELL = [
-  "./", "index.html", "styles.css", "version.js", "config.js", "i18n.js", "app.js",
+  "./", "index.html", "styles.css", "version.js", "vendor/supabase.js", "config.js", "i18n.js", "app.js",
   "draw.js", "recorder.js", "idb.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/mark-96.png", "icons/favicon.png",
 ];
-const CDN_HOSTS = ["cdn.jsdelivr.net", "fonts.googleapis.com", "fonts.gstatic.com"];
+const CDN_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

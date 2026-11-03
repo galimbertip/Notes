@@ -12,6 +12,7 @@ export const SPEECH_LANGS = {
 
 const STR = {
   it: {
+    passwordRepeat: "Ripeti password", passwordMismatch: "Le due password non coincidono.", passwordShort: "La password deve avere almeno 6 caratteri.", emailExists: "Questa email è già registrata: accedi, o usa il link di accesso.", emailRateLimit: "Troppe email inviate in poco tempo. Riprova tra un'ora.", badCredentials: "Email o password errate.", emailNotConfirmed: "Email non ancora confermata: apri il link che ti abbiamo inviato (controlla anche lo spam).", networkError: "Impossibile raggiungere il server. Controlla la connessione.",
     tagline: "Appunti a tastiera, a mano libera e a voce",
     email: "Email", password: "Password",
     signIn: "Accedi", signUp: "Crea account", magicLink: "Inviami un link di accesso",
@@ -43,6 +44,7 @@ const STR = {
     error: "Errore", loading: "Caricamento…",
   },
   en: {
+    passwordRepeat: "Repeat password", passwordMismatch: "The two passwords don't match.", passwordShort: "Password must be at least 6 characters.", emailExists: "This email is already registered: sign in, or use the sign-in link.", emailRateLimit: "Too many emails sent in a short time. Try again in an hour.", badCredentials: "Wrong email or password.", emailNotConfirmed: "Email not confirmed yet: open the link we sent you (check spam too).", networkError: "Can't reach the server. Check your connection.",
     tagline: "Notes by keyboard, by hand and by voice",
     email: "Email", password: "Password",
     signIn: "Sign in", signUp: "Create account", magicLink: "Email me a sign-in link",
@@ -74,6 +76,7 @@ const STR = {
     error: "Error", loading: "Loading…",
   },
   de: {
+    passwordRepeat: "Passwort wiederholen", passwordMismatch: "Die Passwörter stimmen nicht überein.", passwordShort: "Das Passwort muss mindestens 6 Zeichen haben.", emailExists: "Diese E-Mail ist bereits registriert: melde dich an oder nutze den Anmeldelink.", emailRateLimit: "Zu viele E-Mails in kurzer Zeit. Versuche es in einer Stunde erneut.", badCredentials: "E-Mail oder Passwort falsch.", emailNotConfirmed: "E-Mail noch nicht bestätigt: öffne den gesendeten Link (auch im Spam nachsehen).", networkError: "Server nicht erreichbar. Prüfe die Verbindung.",
     tagline: "Notizen per Tastatur, Hand und Stimme",
     email: "E-Mail", password: "Passwort",
     signIn: "Anmelden", signUp: "Konto erstellen", magicLink: "Anmeldelink per E-Mail senden",
@@ -105,6 +108,7 @@ const STR = {
     error: "Fehler", loading: "Laden…",
   },
   fr: {
+    passwordRepeat: "Répéter le mot de passe", passwordMismatch: "Les deux mots de passe ne correspondent pas.", passwordShort: "Le mot de passe doit contenir au moins 6 caractères.", emailExists: "Cet e-mail est déjà enregistré : connecte-toi ou utilise le lien de connexion.", emailRateLimit: "Trop d'e-mails envoyés en peu de temps. Réessaie dans une heure.", badCredentials: "E-mail ou mot de passe incorrect.", emailNotConfirmed: "E-mail pas encore confirmé : ouvre le lien envoyé (vérifie aussi les spams).", networkError: "Serveur injoignable. Vérifie la connexion.",
     tagline: "Notes au clavier, à main levée et à la voix",
     email: "E-mail", password: "Mot de passe",
     signIn: "Se connecter", signUp: "Créer un compte", magicLink: "M'envoyer un lien de connexion",
@@ -136,6 +140,7 @@ const STR = {
     error: "Erreur", loading: "Chargement…",
   },
   es: {
+    passwordRepeat: "Repite la contraseña", passwordMismatch: "Las contraseñas no coinciden.", passwordShort: "La contraseña debe tener al menos 6 caracteres.", emailExists: "Este correo ya está registrado: entra o usa el enlace de acceso.", emailRateLimit: "Demasiados correos en poco tiempo. Inténtalo en una hora.", badCredentials: "Correo o contraseña incorrectos.", emailNotConfirmed: "Correo aún no confirmado: abre el enlace que te enviamos (revisa también spam).", networkError: "No se puede contactar con el servidor. Revisa la conexión.",
     tagline: "Apuntes con teclado, a mano y por voz",
     email: "Correo", password: "Contraseña",
     signIn: "Entrar", signUp: "Crear cuenta", magicLink: "Envíame un enlace de acceso",

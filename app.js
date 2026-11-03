@@ -1,5 +1,4 @@
 // GPverse Notes — app principale
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 import { LANGS, SPEECH_LANGS, detectLang, setLang, getLang, t, applyI18n } from "./i18n.js";
 import { Sketch } from "./draw.js";
@@ -10,7 +9,9 @@ const VERSION = self.GPV_VERSION || "V.?";
 const $ = sel => document.querySelector(sel);
 const $$ = sel => [...document.querySelectorAll(sel)];
 const configured = !SUPABASE_URL.includes("YOUR-PROJECT") && !SUPABASE_ANON_KEY.includes("YOUR-ANON");
-const sb = configured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+// supabase-js è incluso nel repository (vendor/supabase.js), niente CDN esterni
+const sb = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+window.__gpvReady = true;
 
 const state = {
   user: null,
@@ -80,6 +81,10 @@ function setAuthMode(signUp) {
   $("#authSubmit").dataset.i18n = signUp ? "signUp" : "signIn";
   $("#authToggle").dataset.i18n = signUp ? "haveAccount" : "noAccount";
   $("#authPassword").autocomplete = signUp ? "new-password" : "current-password";
+  $("#authPassword2Wrap").hidden = !signUp;
+  $("#authPassword2").required = signUp;
+  $("#authPassword2").value = "";
+  $("#authMagic").hidden = signUp;
   applyI18n($("#authView"));
   authMsg("");
 }
@@ -89,18 +94,33 @@ async function submitAuth(e) {
   const email = $("#authEmail").value.trim();
   const password = $("#authPassword").value;
   if (!password) { $("#authPassword").focus(); return; }
+  if (state.signUpMode) {
+    if (password.length < 6) { authMsg(t("passwordShort"), "err"); $("#authPassword").focus(); return; }
+    if (password !== $("#authPassword2").value) {
+      authMsg(t("passwordMismatch"), "err");
+      $("#authPassword2").value = "";
+      $("#authPassword2").focus();
+      return;
+    }
+  }
   $("#authSubmit").disabled = true;
+  authMsg(t("loading"));
   try {
     if (state.signUpMode) {
       const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: appUrl() } });
       if (error) throw error;
-      if (!data.session) { authMsg(t("signUpDone"), "ok"); setAuthMode(false); }
+      // email già registrata: Supabase risponde senza errore ma con identities vuoto
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        authMsg(t("emailExists"), "err");
+        return;
+      }
+      if (!data.session) { setAuthMode(false); authMsg(t("signUpDone"), "ok"); }
     } else {
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
     }
   } catch (err) {
-    authMsg(err.message || t("error"), "err");
+    authMsg(authError(err), "err");
   } finally {
     $("#authSubmit").disabled = false;
   }
@@ -108,9 +128,29 @@ async function submitAuth(e) {
 
 async function magicLink() {
   const email = $("#authEmail").value.trim();
-  if (!email) { $("#authEmail").focus(); return; }
-  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: appUrl() } });
-  authMsg(error ? error.message : t("checkEmail"), error ? "err" : "ok");
+  if (!email || !$("#authEmail").checkValidity()) { $("#authEmail").reportValidity(); return; }
+  $("#authMagic").disabled = true;
+  authMsg(t("loading"));
+  try {
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: appUrl() } });
+    if (error) throw error;
+    authMsg(t("checkEmail"), "ok");
+  } catch (err) {
+    authMsg(authError(err), "err");
+  } finally {
+    $("#authMagic").disabled = false;
+  }
+}
+
+// messaggi Supabase più comuni tradotti; gli altri mostrati così come arrivano
+function authError(err) {
+  const m = (err && (err.message || err.error_description)) || "";
+  const code = err && err.code;
+  if (code === "over_email_send_rate_limit" || /rate limit/i.test(m)) return t("emailRateLimit");
+  if (code === "invalid_credentials" || /invalid login credentials/i.test(m)) return t("badCredentials");
+  if (code === "email_not_confirmed" || /email not confirmed/i.test(m)) return t("emailNotConfirmed");
+  if (/failed to fetch|network/i.test(m)) return t("networkError");
+  return `${t("error")}: ${m || code || "?"}`;
 }
 
 function appUrl() { return location.origin + location.pathname; }

@@ -13,6 +13,26 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="version.js"></script>
+  <script src="vendor/supabase.js"></script>
+  <script>
+    // Se lo script principale non parte, mostra l'errore invece di non fare nulla
+    (function () {
+      function show(msg) {
+        var el = document.getElementById("authMsg");
+        var v = document.getElementById("authView");
+        if (v) v.hidden = false;
+        if (el) { el.textContent = "Errore di avvio: " + msg; el.className = "msg err"; }
+      }
+      window.addEventListener("error", function (e) { if (!window.__gpvReady) show(e.message || "script"); });
+      window.addEventListener("unhandledrejection", function (e) {
+        var r = e.reason; show((r && r.message) || String(r));
+      });
+      window.addEventListener("load", function () {
+        setTimeout(function () { if (!window.__gpvReady) show("app.js non caricato (ricarica la pagina con Ctrl+F5)"); }, 4000);
+      });
+      document.addEventListener("submit", function (e) { if (!window.__gpvReady) e.preventDefault(); }, true);
+    })();
+  </script>
 </head>
 <body>
 
@@ -28,6 +48,8 @@
         <input type="email" id="authEmail" required autocomplete="email"></label>
       <label><span data-i18n="password"></span>
         <input type="password" id="authPassword" minlength="6" autocomplete="current-password"></label>
+      <label id="authPassword2Wrap" hidden><span data-i18n="passwordRepeat"></span>
+        <input type="password" id="authPassword2" minlength="6" autocomplete="new-password"></label>
       <button type="submit" class="btn primary" id="authSubmit" data-i18n="signIn"></button>
     </form>
     <button class="btn ghost" id="authMagic" data-i18n="magicLink"></button>

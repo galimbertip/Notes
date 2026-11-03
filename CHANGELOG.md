@@ -2,6 +2,12 @@
 
 Formato versione: **V.maior.minor.patch** (fonte unica: `version.js`).
 
+## V.0.1.2 — 2026-11-03
+- Registrazione: password da inserire due volte, controllo lunghezza minima.
+- Messaggi chiari per gli errori di accesso (email già registrata, troppe email, credenziali errate, email non confermata, rete assente).
+- Libreria Supabase inclusa nel repository (niente più dipendenza da CDN esterni, avvio offline più affidabile).
+- Se l'app non parte, viene mostrato l'errore invece di non fare nulla.
+
 ## V.0.1.1 — 2026-11-03
 - Collegata al progetto Supabase "Notes" (Frankfurt).
 - Pubblicazione su GitHub Pages: https://galimbertip.github.io/Notes/
