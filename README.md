@@ -1,4 +1,4 @@
-# GPverse Notes · V.0.1.2
+# GPverse Notes · V.0.2.0
 
 Web app per prendere appunti a tastiera, a mano libera (penna o dito) e a voce,
 con trascrizione e riascolto sincronizzato. Un progetto **GPverse**.
@@ -10,6 +10,7 @@ Nessuna build: HTML + JavaScript puro, backend su **Supabase** (piano gratuito).
 2. **SQL Editor → New query**: incolla tutto `supabase/schema.sql` e premi *Run*.
    Crea le tabelle `notes` e `recordings`, le regole di sicurezza (ognuno vede solo i suoi dati)
    e il bucket privato `audio`.
+   Poi, sempre nel SQL Editor, esegui anche `supabase/002_translation.sql` (traduzioni).
 3. **Project Settings → API**: copia *Project URL* e *anon public key* dentro `config.js`.
 
 ## 2. Pubblica l'app su GitHub Pages (HTTPS, serve per il microfono)
@@ -32,6 +33,22 @@ e aggiungi gli utenti a mano da Authentication → Users → *Invite*.
 
 Nota: il servizio email integrato di Supabase invia poche email l'ora. Se i colleghi sono tanti,
 configura un SMTP (Authentication → Emails → SMTP) o disattiva *Confirm email*.
+
+## 4. Traduzione con DeepL (da V.0.2.0)
+1. Crea un account **DeepL API Free** su https://www.deepl.com/pro-api (500.000 caratteri/mese gratis).
+   Copia la chiave da *Account → API Keys* (finisce con `:fx`).
+2. Supabase → **SQL Editor**: esegui `supabase/002_translation.sql`.
+3. Supabase → **Edge Functions → Deploy a new function → Via Editor**:
+   - nome: `translate` (esattamente così)
+   - incolla tutto `supabase/functions/translate/index.ts` al posto del codice di esempio → **Deploy**.
+4. Nella funzione `translate` → **Details / Settings**: disattiva **Verify JWT with legacy secret**
+   (il controllo dell'utente lo fa già il codice) → *Save*.
+5. Supabase → **Edge Functions → Secrets → Add new secret**:
+   - `DEEPL_API_KEY` = la tua chiave DeepL
+   - facoltativo `USER_MONTHLY_LIMIT` = caratteri al mese per utente (default `100000`)
+
+Uso: nella nota premi 🌐, scegli la lingua. Testo e trascrizioni vengono tradotti e salvati in cache:
+riaprire la stessa traduzione non consuma caratteri. La scrittura a mano non viene tradotta.
 
 ## Dove funziona cosa
 | Funzione | Chrome / Edge (PC, Android) | Safari (iPhone/iPad) | Firefox |
@@ -56,8 +73,12 @@ draw.js               mano libera
 recorder.js           registrazione + trascrizione live
 idb.js                archivio locale (offline e recupero registrazioni)
 i18n.js               lingue dell'interfaccia
+translate.js          traduzione (chiama la Edge Function)
 sw.js, manifest       PWA / offline
+vendor/supabase.js    libreria Supabase (inclusa, niente CDN)
 supabase/schema.sql   database e sicurezza
+supabase/002_translation.sql        aggiornamento per le traduzioni
+supabase/functions/translate/       proxy DeepL (Edge Function)
 ```
 
 ## Rilasciare una nuova versione

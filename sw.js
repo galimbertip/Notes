@@ -3,7 +3,7 @@ importScripts("version.js");
 const CACHE = `gpverse-notes-${self.GPV_VERSION}`;
 const SHELL = [
   "./", "index.html", "styles.css", "version.js", "vendor/supabase.js", "config.js", "i18n.js", "app.js",
-  "draw.js", "recorder.js", "idb.js", "manifest.webmanifest",
+  "draw.js", "recorder.js", "idb.js", "translate.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/mark-96.png", "icons/favicon.png",
 ];
 const CDN_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];

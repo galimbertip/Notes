@@ -4,6 +4,7 @@ import { LANGS, SPEECH_LANGS, detectLang, setLang, getLang, t, applyI18n } from 
 import { Sketch } from "./draw.js";
 import { Recorder, speechSupported, extFor, recoverInterrupted } from "./recorder.js";
 import { idb } from "./idb.js";
+import { TARGETS, defaultTarget, rememberTarget, sourceFromSpeech, sameLanguage, hash, translateTexts } from "./translate.js";
 
 const VERSION = self.GPV_VERSION || "V.?";
 const $ = sel => document.querySelector(sel);
@@ -21,6 +22,7 @@ const state = {
   saveTimer: 0,
   signUpMode: false,
   recording: null,      // { recId, noteId }
+  tr: { on: false, target: "IT", usage: null, forceRec: false },
 };
 
 const recorder = new Recorder();
@@ -33,6 +35,7 @@ fillLangSelects();
 setLang(detectLang());
 syncLangSelects();
 fillSpeechLangs();
+fillTrTargets();
 updateNet();
 
 const sketch = new Sketch($("#drawCanvas"), $("#canvasWrap"), () => scheduleSave());
@@ -257,7 +260,142 @@ function showNote(note) {
   sketch.load(note.drawing);
   setSaveState("");
   renderLive();
+  applyTrVisibility();
+  if (state.tr.on) setTrStatus("");
+  if (state.tr.on && state.tab === "text") translateNote();
   if (state.tab === "audio") renderRecordings();
+}
+
+/* ═════════ Traduzione (DeepL) ═════════ */
+function setTranslate(on) {
+  state.tr.on = on;
+  $("#trBtn").classList.toggle("on", on);
+  $("#trBar").hidden = !on;
+  applyTrVisibility();
+  setTrStatus("");
+  if (!state.current) return;
+  if (state.tab === "text" && on) translateNote();
+  if (state.tab === "draw" && on) setTrStatus(t("trNoDraw"));
+  if (state.tab === "audio") renderRecordings();
+}
+
+function applyTrVisibility() {
+  const on = state.tr.on;
+  $("#noteBody").hidden = on;
+  $("#trView").hidden = !on;
+}
+
+function setTrStatus(text, err = false) {
+  const el = $("#trStatus");
+  el.textContent = text;
+  el.classList.toggle("err", err);
+}
+
+function showUsage(usage) {
+  if (!usage) return;
+  state.tr.usage = usage;
+  const nf = new Intl.NumberFormat(getLang());
+  $("#trUsage").textContent = `${nf.format(usage.used)} / ${nf.format(usage.limit)} ${t("trChars")}`;
+}
+
+function trError(err) {
+  const map = {
+    user_limit: "trUserLimit", deepl_quota: "trQuota", not_configured: "trNotConfigured",
+    no_function: "trNoFunction", deepl_auth: "trBadKey", network: "networkError", too_long: "trTooLong",
+  };
+  if (err && err.usage) showUsage(err.usage);
+  const key = err && map[err.code];
+  return key ? t(key) : `${t("error")}: ${(err && err.message) || "?"}`;
+}
+
+function showNoteTr(entry, loading = false) {
+  $("#trTitle").textContent = entry ? entry.title || "" : "";
+  $("#trBody").textContent = entry ? entry.body || "" : "";
+  $("#trView").classList.toggle("loading", loading);
+}
+
+function noteTrLabel(entry, target) {
+  if (entry.src && sameLanguage(entry.src, target)) return t("trSameLang");
+  return `${t("trDone")} ${entry.src || "?"} → ${TARGETS[target]}`;
+}
+
+async function translateNote(force = false) {
+  const n = state.current;
+  if (!n || !state.tr.on) return;
+  const target = state.tr.target;
+  collect();
+  const title = n.title || "", body = n.body || "";
+  if (!title.trim() && !body.trim()) { showNoteTr(null); setTrStatus(t("trEmpty")); return; }
+  const h = hash(title + "\u0000" + body);
+  n.translations = n.translations || {};
+  const cached = n.translations[target];
+  if (!force && cached && cached.h === h) { showNoteTr(cached); setTrStatus(noteTrLabel(cached, target)); return; }
+
+  const noteId = n.id;
+  showNoteTr(cached || null, true);
+  setTrStatus(t("translating"));
+  try {
+    await saveNow();
+    const texts = [];
+    if (title.trim()) texts.push(title);
+    if (body.trim()) texts.push(body);
+    const res = await translateTexts(sb, texts, target);
+    let i = 0;
+    const entry = {
+      h,
+      title: title.trim() ? res.translations[i++].text : "",
+      body: body.trim() ? res.translations[i++].text : "",
+      src: res.translations[0] && res.translations[0].detected_source_language,
+      at: Date.now(),
+    };
+    n.translations[target] = entry;
+    sb.from("notes").update({ translations: n.translations }).eq("id", noteId).then(() => {}, () => {});
+    showUsage(res.usage);
+    if (state.current?.id === noteId && state.tr.on && state.tr.target === target && state.tab === "text") {
+      showNoteTr(entry);
+      setTrStatus(noteTrLabel(entry, target));
+    }
+  } catch (err) {
+    if (state.current?.id === noteId) { showNoteTr(cached || null); setTrStatus(trError(err), true); }
+  }
+}
+
+async function translateRecording(r, segs, lines, el, force) {
+  const target = state.tr.target;
+  const src = sourceFromSpeech(r.speech_lang);
+  const badge = el.querySelector(".r-tr");
+  const apply = arr => arr.forEach((txt, i) => {
+    if (!lines[i]) return;
+    lines[i].lastChild.textContent = txt;
+    lines[i].title = segs[i].text;        // originale al passaggio del mouse
+    lines[i].classList.add("translated");
+  });
+  if (sameLanguage(src, target)) { badge.textContent = t("trSameLang"); return; }
+  const h = hash(segs.map(s => s.text).join("\u0000"));
+  r.translations = r.translations || {};
+  const cached = r.translations[target];
+  if (!force && cached && cached.h === h) { apply(cached.segs); badge.textContent = `DeepL → ${TARGETS[target]}`; return; }
+  badge.textContent = t("translating");
+  try {
+    const res = await translateTexts(sb, segs.map(s => s.text), target, src);
+    const out = res.translations.map(x => x.text);
+    r.translations[target] = { h, segs: out, at: Date.now() };
+    if (!r.pending) sb.from("recordings").update({ translations: r.translations }).eq("id", r.id).then(() => {}, () => {});
+    showUsage(res.usage);
+    if (!el.isConnected || !state.tr.on || state.tr.target !== target) return;
+    apply(out);
+    badge.textContent = `DeepL → ${TARGETS[target]}`;
+  } catch (err) {
+    badge.textContent = trError(err);
+    badge.classList.add("err");
+  }
+}
+
+function fillTrTargets() {
+  const sel = $("#trTarget");
+  sel.innerHTML = Object.entries(TARGETS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+  state.tr.target = defaultTarget(getLang());
+  sel.value = state.tr.target;
 }
 
 async function deleteNote() {
@@ -515,6 +653,7 @@ async function renderRecordings() {
   }
   const fmt = new Intl.DateTimeFormat(getLang(), { dateStyle: "short", timeStyle: "short" });
   for (const r of all) list.append(recItem(r, fmt));
+  state.tr.forceRec = false;
 }
 
 function recItem(r, fmt) {
@@ -522,7 +661,7 @@ function recItem(r, fmt) {
   el.className = "rec-item" + (r.pending ? " pending" : "");
   el.innerHTML = `
     <div class="rec-row">
-      <div><div class="r-title"></div><div class="r-sub"></div></div>
+      <div><div class="r-title"></div><div class="r-sub"></div><div class="r-tr"></div></div>
       <span class="spacer"></span>
       <button class="icon-btn" data-act="copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 011-1h9"/></svg></button>
       <button class="icon-btn" data-act="insert"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7M17 15v6M14 18h6"/></svg></button>
@@ -554,7 +693,10 @@ function recItem(r, fmt) {
     lines.forEach((l, i) => l.classList.toggle("now", i === idx));
   });
 
-  const text = () => segs.map(s => `[${fmtTime(s.t)}] ${s.text}`).join("\n");
+  if (state.tr.on && segs.length) translateRecording(r, segs, lines, el, state.tr.forceRec);
+
+  // copia/inserisce ciò che si vede (originale o tradotto)
+  const text = () => segs.map((s, i) => `[${fmtTime(s.t)}] ${lines[i].lastChild.textContent}`).join("\n");
   el.querySelector('[data-act="copy"]').onclick = async () => {
     try { await navigator.clipboard.writeText(text()); toast(t("copied")); } catch { toast(t("error"), true); }
   };
@@ -601,6 +743,19 @@ function bindUI() {
   $("#deleteNoteBtn").onclick = deleteNote;
 
   $$(".tab").forEach(b => (b.onclick = () => switchTab(b.dataset.tab)));
+
+  $("#trBtn").onclick = () => setTranslate(!state.tr.on);
+  $("#trTarget").onchange = e => {
+    state.tr.target = e.target.value;
+    rememberTarget(state.tr.target);
+    if (!state.tr.on) return;
+    if (state.tab === "text") translateNote();
+    if (state.tab === "audio") renderRecordings();
+  };
+  $("#trRefresh").onclick = () => {
+    if (state.tab === "text") translateNote(true);
+    if (state.tab === "audio") { state.tr.forceRec = true; renderRecordings(); }
+  };
 
   $$(".tool").forEach(b => (b.onclick = () => {
     $$(".tool").forEach(x => x.classList.toggle("active", x === b));
@@ -656,6 +811,10 @@ function switchTab(tab) {
   $$(".panel").forEach(p => (p.hidden = p.dataset.panel !== tab));
   if (tab === "draw") sketch.resize();
   if (tab === "audio") { renderRecordings(); renderLive(); }
+  if (state.tr.on) {
+    setTrStatus(tab === "draw" ? t("trNoDraw") : "");
+    if (tab === "text") translateNote();
+  }
 }
 
 function closeSidebar() { $("#sidebar").classList.remove("open"); $("#scrim").classList.remove("show"); }

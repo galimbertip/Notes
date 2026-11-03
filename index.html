@@ -93,6 +93,9 @@
       <div class="editor-head">
         <input id="noteTitle" class="title-input" data-i18n-ph="titlePh">
         <span id="saveState" class="save-state"></span>
+        <button class="icon-btn" id="trBtn" data-i18n-title="translate">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>
+        </button>
         <button class="icon-btn danger" id="deleteNoteBtn" data-i18n-title="deleteNote">
           <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
         </button>
@@ -108,9 +111,24 @@
           <i id="recDot" class="rec-dot" hidden></i></button>
       </nav>
 
+      <!-- Barra traduzione -->
+      <div class="tr-bar" id="trBar" hidden>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>
+        <label class="tr-to"><span data-i18n="translateTo"></span> <select id="trTarget"></select></label>
+        <button class="btn ghost small" id="trRefresh" data-i18n="trRefresh"></button>
+        <span id="trStatus" class="tr-status"></span>
+        <span class="spacer"></span>
+        <span id="trUsage" class="tr-usage"></span>
+        <span class="tr-credit">DeepL</span>
+      </div>
+
       <!-- Testo -->
       <section class="panel" data-panel="text">
         <textarea id="noteBody" class="body-input" data-i18n-ph="bodyPh"></textarea>
+        <div id="trView" class="tr-view" hidden>
+          <h2 id="trTitle"></h2>
+          <div id="trBody"></div>
+        </div>
       </section>
 
       <!-- Mano libera -->

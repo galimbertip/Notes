@@ -2,6 +2,15 @@
 
 Formato versione: **V.maior.minor.patch** (fonte unica: `version.js`).
 
+## V.0.2.0 — 2026-11-03
+- Traduzione con DeepL: pulsante 🌐 nella nota, 16 lingue di destinazione.
+- Traduce titolo, testo e trascrizioni (con i tempi: clic su una riga tradotta → salta nell'audio; originale al passaggio del mouse).
+- Traduzioni salvate in cache: riaprirle non consuma caratteri; si rifanno solo se il testo cambia o con "Ritraduci".
+- Chiave DeepL protetta sul server (Supabase Edge Function `translate`), mai nel browser.
+- Limite mensile di caratteri per utente (default 100.000) e contatore visibile.
+- Copia/inserisci trascrizione usa la versione mostrata (originale o tradotta).
+- Salvare una traduzione non cambia più la data di modifica della nota.
+
 ## V.0.1.2 — 2026-11-03
 - Registrazione: password da inserire due volte, controllo lunghezza minima.
 - Messaggi chiari per gli errori di accesso (email già registrata, troppe email, credenziali errate, email non confermata, rete assente).
@@ -25,5 +34,4 @@ Prima versione.
 - Versione visibile nel footer.
 
 ## Prossime
-- V.0.2.0 — traduzione nella propria lingua con DeepL API Free (proxy su Supabase Edge Function).
 - In valutazione — ritrascrizione accurata con Whisper nel browser; esportazione PDF; cartelle/corsi.

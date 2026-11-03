@@ -12,6 +12,7 @@ export const SPEECH_LANGS = {
 
 const STR = {
   it: {
+    translate: "Traduci", translateTo: "Traduci in", trRefresh: "Ritraduci", translating: "Traduzione in corso…", trDone: "Tradotto da", trNoDraw: "La scrittura a mano non viene tradotta.", trSameLang: "Già nella lingua scelta", trEmpty: "Niente da tradurre.", trChars: "caratteri questo mese", trUserLimit: "Hai raggiunto il tuo limite mensile di traduzione.", trQuota: "Quota DeepL del mese esaurita: riprova il mese prossimo.", trNotConfigured: "Traduzione non configurata: manca la chiave DeepL sul server.", trNoFunction: "Funzione di traduzione non installata su Supabase.", trBadKey: "Chiave DeepL non valida.", trTooLong: "Testo troppo lungo da tradurre in una volta.",
     passwordRepeat: "Ripeti password", passwordMismatch: "Le due password non coincidono.", passwordShort: "La password deve avere almeno 6 caratteri.", emailExists: "Questa email è già registrata: accedi, o usa il link di accesso.", emailRateLimit: "Troppe email inviate in poco tempo. Riprova tra un'ora.", badCredentials: "Email o password errate.", emailNotConfirmed: "Email non ancora confermata: apri il link che ti abbiamo inviato (controlla anche lo spam).", networkError: "Impossibile raggiungere il server. Controlla la connessione.",
     tagline: "Appunti a tastiera, a mano libera e a voce",
     email: "Email", password: "Password",
@@ -44,6 +45,7 @@ const STR = {
     error: "Errore", loading: "Caricamento…",
   },
   en: {
+    translate: "Translate", translateTo: "Translate to", trRefresh: "Translate again", translating: "Translating…", trDone: "Translated from", trNoDraw: "Handwriting isn't translated.", trSameLang: "Already in the chosen language", trEmpty: "Nothing to translate.", trChars: "characters this month", trUserLimit: "You've reached your monthly translation limit.", trQuota: "DeepL monthly quota used up: try again next month.", trNotConfigured: "Translation not set up: the DeepL key is missing on the server.", trNoFunction: "Translation function isn't installed on Supabase.", trBadKey: "Invalid DeepL key.", trTooLong: "Text too long to translate at once.",
     passwordRepeat: "Repeat password", passwordMismatch: "The two passwords don't match.", passwordShort: "Password must be at least 6 characters.", emailExists: "This email is already registered: sign in, or use the sign-in link.", emailRateLimit: "Too many emails sent in a short time. Try again in an hour.", badCredentials: "Wrong email or password.", emailNotConfirmed: "Email not confirmed yet: open the link we sent you (check spam too).", networkError: "Can't reach the server. Check your connection.",
     tagline: "Notes by keyboard, by hand and by voice",
     email: "Email", password: "Password",
@@ -76,6 +78,7 @@ const STR = {
     error: "Error", loading: "Loading…",
   },
   de: {
+    translate: "Übersetzen", translateTo: "Übersetzen in", trRefresh: "Neu übersetzen", translating: "Wird übersetzt…", trDone: "Übersetzt aus", trNoDraw: "Handschrift wird nicht übersetzt.", trSameLang: "Bereits in der gewählten Sprache", trEmpty: "Nichts zu übersetzen.", trChars: "Zeichen diesen Monat", trUserLimit: "Du hast dein monatliches Übersetzungslimit erreicht.", trQuota: "DeepL-Monatskontingent aufgebraucht: nächsten Monat erneut versuchen.", trNotConfigured: "Übersetzung nicht eingerichtet: DeepL-Schlüssel fehlt auf dem Server.", trNoFunction: "Übersetzungsfunktion ist auf Supabase nicht installiert.", trBadKey: "Ungültiger DeepL-Schlüssel.", trTooLong: "Text zu lang für eine Übersetzung.",
     passwordRepeat: "Passwort wiederholen", passwordMismatch: "Die Passwörter stimmen nicht überein.", passwordShort: "Das Passwort muss mindestens 6 Zeichen haben.", emailExists: "Diese E-Mail ist bereits registriert: melde dich an oder nutze den Anmeldelink.", emailRateLimit: "Zu viele E-Mails in kurzer Zeit. Versuche es in einer Stunde erneut.", badCredentials: "E-Mail oder Passwort falsch.", emailNotConfirmed: "E-Mail noch nicht bestätigt: öffne den gesendeten Link (auch im Spam nachsehen).", networkError: "Server nicht erreichbar. Prüfe die Verbindung.",
     tagline: "Notizen per Tastatur, Hand und Stimme",
     email: "E-Mail", password: "Passwort",
@@ -108,6 +111,7 @@ const STR = {
     error: "Fehler", loading: "Laden…",
   },
   fr: {
+    translate: "Traduire", translateTo: "Traduire en", trRefresh: "Retraduire", translating: "Traduction…", trDone: "Traduit de", trNoDraw: "L'écriture manuscrite n'est pas traduite.", trSameLang: "Déjà dans la langue choisie", trEmpty: "Rien à traduire.", trChars: "caractères ce mois-ci", trUserLimit: "Tu as atteint ta limite mensuelle de traduction.", trQuota: "Quota DeepL du mois épuisé : réessaie le mois prochain.", trNotConfigured: "Traduction non configurée : clé DeepL absente sur le serveur.", trNoFunction: "Fonction de traduction non installée sur Supabase.", trBadKey: "Clé DeepL non valide.", trTooLong: "Texte trop long pour une seule traduction.",
     passwordRepeat: "Répéter le mot de passe", passwordMismatch: "Les deux mots de passe ne correspondent pas.", passwordShort: "Le mot de passe doit contenir au moins 6 caractères.", emailExists: "Cet e-mail est déjà enregistré : connecte-toi ou utilise le lien de connexion.", emailRateLimit: "Trop d'e-mails envoyés en peu de temps. Réessaie dans une heure.", badCredentials: "E-mail ou mot de passe incorrect.", emailNotConfirmed: "E-mail pas encore confirmé : ouvre le lien envoyé (vérifie aussi les spams).", networkError: "Serveur injoignable. Vérifie la connexion.",
     tagline: "Notes au clavier, à main levée et à la voix",
     email: "E-mail", password: "Mot de passe",
@@ -140,6 +144,7 @@ const STR = {
     error: "Erreur", loading: "Chargement…",
   },
   es: {
+    translate: "Traducir", translateTo: "Traducir a", trRefresh: "Volver a traducir", translating: "Traduciendo…", trDone: "Traducido de", trNoDraw: "La escritura a mano no se traduce.", trSameLang: "Ya está en el idioma elegido", trEmpty: "Nada que traducir.", trChars: "caracteres este mes", trUserLimit: "Has alcanzado tu límite mensual de traducción.", trQuota: "Cuota mensual de DeepL agotada: inténtalo el mes que viene.", trNotConfigured: "Traducción no configurada: falta la clave DeepL en el servidor.", trNoFunction: "La función de traducción no está instalada en Supabase.", trBadKey: "Clave DeepL no válida.", trTooLong: "Texto demasiado largo para traducirlo de una vez.",
     passwordRepeat: "Repite la contraseña", passwordMismatch: "Las contraseñas no coinciden.", passwordShort: "La contraseña debe tener al menos 6 caracteres.", emailExists: "Este correo ya está registrado: entra o usa el enlace de acceso.", emailRateLimit: "Demasiados correos en poco tiempo. Inténtalo en una hora.", badCredentials: "Correo o contraseña incorrectos.", emailNotConfirmed: "Correo aún no confirmado: abre el enlace que te enviamos (revisa también spam).", networkError: "No se puede contactar con el servidor. Revisa la conexión.",
     tagline: "Apuntes con teclado, a mano y por voz",
     email: "Correo", password: "Contraseña",
