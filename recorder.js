@@ -109,15 +109,22 @@ export class Recorder {
       this.interim = interim.trim();
       this.onTranscript && this.onTranscript(this.segments, this.interim);
     };
+    this.speechFails = 0;
+    this.speechError = null;
+    rec.onstart = () => { this.speechListening = true; this.onTranscript && this.onTranscript(this.segments, this.interim); };
+    rec.onresult = (orig => ev => { this.speechFails = 0; this.speechError = null; orig(ev); })(rec.onresult);
     rec.onerror = ev => {
-      if (ev.error === "not-allowed" || ev.error === "service-not-allowed") {
-        this.speechDenied = true;
-        this.onError && this.onError(ev.error);
-      }
+      if (ev.error === "no-speech" || ev.error === "aborted") return;   // silenzio: normale
+      this.speechError = ev.error;
+      // errori definitivi: smettiamo di riprovare
+      const fatal = ["not-allowed", "service-not-allowed", "language-not-supported", "bad-grammar"];
+      if (fatal.includes(ev.error) || ++this.speechFails >= 3) this.speechDenied = true;
+      this.onError && this.onError(ev.error, this.speechDenied);
     };
     // il riconoscimento si ferma da solo dopo pause/limiti: lo riavviamo finché registriamo
     rec.onend = () => {
-      if (this.active && !this.speechDenied) setTimeout(() => { try { rec.start(); } catch {} }, 250);
+      this.speechListening = false;
+      if (this.active && !this.speechDenied) setTimeout(() => { try { rec.start(); } catch {} }, this.speechFails ? 1500 : 250);
     };
     try { rec.start(); } catch {}
     this.speech = rec;

@@ -690,13 +690,14 @@ async function toggleRecording() {
   if (!window.MediaRecorder || !navigator.mediaDevices?.getUserMedia) { toast(t("error"), true); return; }
   const recId = crypto.randomUUID();
   const noteId = state.current.id;
+  if (speechSupported) { $("#speechWarn").hidden = true; $("#speechWarn").textContent = t("noSpeechApi"); }
   await saveNow();   // la nota deve esistere sul server prima dell'audio
   try {
     await recorder.start({
       recId, noteId, userId: state.user.id, lang: $("#speechLang").value,
       onLevel: drawLevel,
       onTranscript: () => renderLive(),
-      onError: () => { $("#speechWarn").hidden = false; },
+      onError: (code, final) => { if (final) showSpeechError(code); renderLive(); },
     });
   } catch (err) {
     toast(err.name === "NotAllowedError" ? t("micDenied") : (err.message || t("error")), true);
@@ -790,12 +791,31 @@ function drawLevel(level) {
   ctx.globalAlpha = 1;
 }
 
+function showSpeechError(code) {
+  const key = {
+    "network": "speechErrNetwork",
+    "not-allowed": "speechErrDenied", "service-not-allowed": "speechErrDenied",
+    "audio-capture": "speechErrMic",
+    "language-not-supported": "speechErrLang",
+  }[code] || "speechErrGeneric";
+  const el = $("#speechWarn");
+  el.textContent = t(key).replace("{code}", code);
+  el.hidden = false;
+}
+
 function renderLive() {
   const show = !!state.recording && state.current?.id === state.recording.noteId && speechSupported;
   $("#liveBox").hidden = !show;
   if (!show) return;
   const box = $("#liveText");
   box.innerHTML = "";
+  if (!recorder.segments?.length && !recorder.interim) {
+    const d = document.createElement("div");
+    d.className = "interim";
+    d.textContent = recorder.speechDenied ? t("speechStopped")
+      : recorder.speechListening ? t("speechListening") : t("speechStarting");
+    box.append(d);
+  }
   for (const s of recorder.segments || []) box.append(segLine(s, null));
   if (recorder.interim) {
     const d = document.createElement("div");

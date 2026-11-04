@@ -2,6 +2,11 @@
 
 Formato versione: **V.maior.minor.patch** (fonte unica: `version.js`).
 
+## V.0.3.1 — 2026-11-04
+- Trascrizione live: se il riconoscimento vocale del browser fallisce, l'app mostra il motivo (es. errore "network" su Chromium/Brave/Opera/Edge per Linux) invece di restare muta.
+- Riquadro "Trascrizione live" visibile da subito con lo stato: avvio, in ascolto, interrotta.
+- Dopo 3 errori consecutivi smette di riprovare; l'audio continua comunque a registrarsi.
+
 ## V.0.3.0 — 2026-11-04
 - Corsi e cartelle: nella barra laterale crea un corso (es. "Sicurezza – Modulo generale"), rinominalo o eliminalo.
 - Ogni corso ha un colore e il numero di note; "Tutte le note" e "Senza corso" sempre disponibili.

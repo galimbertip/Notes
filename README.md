@@ -1,4 +1,4 @@
-# GPverse Notes · V.0.3.0
+# GPverse Notes · V.0.3.1
 
 Web app per prendere appunti a tastiera, a mano libera (penna o dito) e a voce,
 con trascrizione e riascolto sincronizzato. Un progetto **GPverse**.
