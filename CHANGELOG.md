@@ -2,6 +2,14 @@
 
 Formato versione: **V.maior.minor.patch** (fonte unica: `version.js`).
 
+## V.0.3.0 — 2026-11-04
+- Corsi e cartelle: nella barra laterale crea un corso (es. "Sicurezza – Modulo generale"), rinominalo o eliminalo.
+- Ogni corso ha un colore e il numero di note; "Tutte le note" e "Senza corso" sempre disponibili.
+- Le nuove note nascono nel corso selezionato; nella nota un menu permette di spostarla (o di creare un corso al volo).
+- La ricerca trova le note in tutti i corsi; l'ultimo corso aperto viene ricordato.
+- Eliminando un corso le note non si perdono: restano "Senza corso".
+- Richiede `supabase/003_folders.sql`; senza, l'app funziona come prima e la sezione corsi resta nascosta.
+
 ## V.0.2.0 — 2026-11-03
 - Traduzione con DeepL: pulsante 🌐 nella nota, 16 lingue di destinazione.
 - Traduce titolo, testo e trascrizioni (con i tempi: clic su una riga tradotta → salta nell'audio; originale al passaggio del mouse).
@@ -34,4 +42,4 @@ Prima versione.
 - Versione visibile nel footer.
 
 ## Prossime
-- In valutazione — ritrascrizione accurata con Whisper nel browser; esportazione PDF; cartelle/corsi.
+- In valutazione — esportazione PDF; ritrascrizione accurata con Whisper nel browser; condivisione note con i colleghi.

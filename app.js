@@ -23,6 +23,9 @@ const state = {
   signUpMode: false,
   recording: null,      // { recId, noteId }
   tr: { on: false, target: "IT", usage: null, forceRec: false },
+  folders: [],          // [{id,name,color}]
+  foldersOk: false,     // false finché non è stato eseguito 003_folders.sql
+  filter: "all",        // "all" | "none" | id cartella
 };
 
 const recorder = new Recorder();
@@ -164,15 +167,27 @@ async function signOut() {
   await sb.auth.signOut();
   state.current = null;
   state.notes = [];
+  state.folders = [];
 }
 
 /* ═════════ Note ═════════ */
+const LIST_COLS = "id,title,body,updated_at";
+const LIST_COLS_F = LIST_COLS + ",folder_id";
+
+async function fetchNoteList() {
+  let res = await sb.from("notes").select(state.foldersOk ? LIST_COLS_F : LIST_COLS).order("updated_at", { ascending: false });
+  if (res.error && state.foldersOk) {
+    state.foldersOk = false;
+    res = await sb.from("notes").select(LIST_COLS).order("updated_at", { ascending: false });
+  }
+  if (res.error) throw res.error;
+  return res.data;
+}
+
 async function loadNotes() {
+  await loadFolders();
   try {
-    const { data, error } = await sb.from("notes")
-      .select("id,title,body,updated_at").order("updated_at", { ascending: false });
-    if (error) throw error;
-    state.notes = data;
+    state.notes = await fetchNoteList();
   } catch {
     // offline: usa la cache locale
     const cached = (await idb.all("notes")).filter(n => n.user_id === state.user.id);
@@ -190,12 +205,21 @@ async function loadNotes() {
 
 function showEmpty() { $("#editor").hidden = true; $("#emptyState").hidden = false; }
 
+function inFilter(n) {
+  if (!state.foldersOk || state.filter === "all") return true;
+  if (state.filter === "none") return !n.folder_id;
+  return n.folder_id === state.filter;
+}
+
 function renderList() {
+  renderFolders();
   const q = $("#searchInput").value.trim().toLowerCase();
   const list = $("#noteList");
   list.innerHTML = "";
-  const items = state.notes.filter(n =>
-    !q || (n.title || "").toLowerCase().includes(q) || (n.body || "").toLowerCase().includes(q));
+  // la ricerca cerca in tutte le cartelle
+  const items = state.notes.filter(n => q
+    ? (n.title || "").toLowerCase().includes(q) || (n.body || "").toLowerCase().includes(q)
+    : inFilter(n));
   if (!items.length) {
     const li = document.createElement("li");
     li.className = "empty-li";
@@ -210,6 +234,14 @@ function renderList() {
     li.innerHTML = `<div class="n-title"></div><div class="n-date"></div>`;
     li.querySelector(".n-title").textContent = n.title || t("untitled");
     li.querySelector(".n-date").textContent = n.updated_at ? fmt.format(new Date(n.updated_at)) : "";
+    const f = n.folder_id && state.folders.find(x => x.id === n.folder_id);
+    if (f && (q || state.filter === "all")) {
+      const tag = document.createElement("span");
+      tag.className = "n-folder";
+      tag.style.setProperty("--fc", f.color);
+      tag.textContent = f.name;
+      li.querySelector(".n-date").append(tag);
+    }
     li.onclick = () => { openNote(n.id); closeSidebar(); };
     list.append(li);
   }
@@ -217,11 +249,13 @@ function renderList() {
 
 async function newNote() {
   await saveNow();
+  const folder_id = state.foldersOk && state.filter !== "all" && state.filter !== "none" ? state.filter : null;
   const note = {
-    id: crypto.randomUUID(), user_id: state.user.id, title: "", body: "",
+    id: crypto.randomUUID(), user_id: state.user.id, title: "", body: "", folder_id,
     drawing: { height: 1400, strokes: [] }, updated_at: new Date().toISOString(),
   };
-  state.notes.unshift({ id: note.id, title: "", body: "", updated_at: note.updated_at });
+  $("#searchInput").value = "";
+  state.notes.unshift({ id: note.id, title: "", body: "", folder_id, updated_at: note.updated_at });
   showNote(note);
   renderList();
   closeSidebar();
@@ -257,6 +291,7 @@ function showNote(note) {
   $("#editor").hidden = false;
   $("#noteTitle").value = note.title || "";
   $("#noteBody").value = note.body || "";
+  fillNoteFolder(note.folder_id || "");
   sketch.load(note.drawing);
   setSaveState("");
   renderLive();
@@ -424,7 +459,9 @@ function collect() {
   n.title = $("#noteTitle").value;
   n.body = $("#noteBody").value;
   n.drawing = sketch.getData();
-  return { title: n.title, body: n.body, drawing: n.drawing };
+  const payload = { title: n.title, body: n.body, drawing: n.drawing };
+  if (state.foldersOk) payload.folder_id = n.folder_id || null;
+  return payload;
 }
 
 function scheduleSave(delay = 900) {
@@ -447,7 +484,7 @@ async function saveNow() {
   if (ok) {
     n.updated_at = ok.updated_at;
     const li = state.notes.find(x => x.id === n.id);
-    if (li) { Object.assign(li, { title: payload.title, body: payload.body, updated_at: ok.updated_at }); }
+    if (li) { Object.assign(li, { title: payload.title, body: payload.body, folder_id: n.folder_id || null, updated_at: ok.updated_at }); }
     idb.put("notes", { ...n }).catch(() => {});
     if (state.current?.id === n.id) setSaveState(t("saved"));
     renderList();
@@ -459,8 +496,14 @@ async function saveNow() {
 
 async function pushNote(id, payload) {
   try {
-    const { data, error } = await sb.from("notes")
+    if (!state.foldersOk && "folder_id" in payload) { payload = { ...payload }; delete payload.folder_id; }
+    let { data, error } = await sb.from("notes")
       .upsert({ id, ...payload }).select("updated_at").single();
+    // cartella eliminata da un altro dispositivo: salva la nota senza cartella
+    if (error && payload.folder_id && /folder not found|foreign key/i.test(error.message || "")) {
+      ({ data, error } = await sb.from("notes").upsert({ id, ...payload, folder_id: null }).select("updated_at").single());
+      if (!error && state.current?.id === id) { state.current.folder_id = null; fillNoteFolder(""); }
+    }
     if (error) throw error;
     clearDraft(id);
     return data;
@@ -490,8 +533,148 @@ async function flushDrafts() {
 }
 
 async function loadNotesListOnly() {
-  const { data } = await sb.from("notes").select("id,title,body,updated_at").order("updated_at", { ascending: false });
-  if (data) { state.notes = data; renderList(); }
+  try { state.notes = await fetchNoteList(); renderList(); } catch {}
+}
+
+/* ═════════ Corsi e cartelle ═════════ */
+const FOLDER_COLORS = ["#2ee6ff", "#8b7bff", "#ff5c7a", "#facc15", "#4ade80", "#fb923c", "#f472b6", "#60a5fa"];
+const foldersKey = () => `gpv.folders.${state.user?.id}`;
+const filterKey = () => `gpv.filter.${state.user?.id}`;
+
+async function loadFolders() {
+  try {
+    const { data, error } = await sb.from("folders").select("id,name,color").order("name");
+    if (error) throw error;
+    state.folders = data;
+    state.foldersOk = true;
+    try { localStorage.setItem(foldersKey(), JSON.stringify(data)); } catch {}
+  } catch (err) {
+    // tabella mancante (003_folders.sql non eseguito) → funzione nascosta
+    const missing = err && (err.code === "42P01" || err.code === "PGRST205" || /folders/i.test(err.message || ""));
+    if (missing && navigator.onLine) { state.foldersOk = false; state.folders = []; }
+    else {
+      try { state.folders = JSON.parse(localStorage.getItem(foldersKey()) || "[]"); } catch { state.folders = []; }
+      state.foldersOk = state.folders.length > 0;
+    }
+  }
+  let f = "all";
+  try { f = localStorage.getItem(filterKey()) || "all"; } catch {}
+  state.filter = f === "all" || f === "none" || state.folders.some(x => x.id === f) ? f : "all";
+  $("#folderBox").hidden = !state.foldersOk;
+  $("#noteFolder").hidden = !state.foldersOk;
+}
+
+function setFilter(f) {
+  state.filter = f;
+  try { localStorage.setItem(filterKey(), f); } catch {}
+  $("#searchInput").value = "";
+  renderList();
+}
+
+function renderFolders() {
+  const box = $("#folderList");
+  if (!state.foldersOk) { box.innerHTML = ""; return; }
+  box.innerHTML = "";
+  const count = fn => state.notes.filter(fn).length;
+  const row = (id, label, color, n, editable) => {
+    const li = document.createElement("li");
+    li.className = "f-row" + (state.filter === id ? " active" : "");
+    li.innerHTML = `<span class="f-dot"></span><span class="f-name"></span><span class="f-count"></span>`;
+    if (color) li.querySelector(".f-dot").style.background = color;
+    else li.querySelector(".f-dot").classList.add("f-dot-empty");
+    li.querySelector(".f-name").textContent = label;
+    li.querySelector(".f-count").textContent = n;
+    li.onclick = () => setFilter(id);
+    if (editable && state.filter === id) {
+      const actions = document.createElement("span");
+      actions.className = "f-actions";
+      actions.innerHTML = `
+        <button class="icon-btn sm" data-a="rename"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg></button>
+        <button class="icon-btn sm danger" data-a="delete"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>`;
+      actions.querySelector('[data-a="rename"]').title = t("renameFolder");
+      actions.querySelector('[data-a="delete"]').title = t("deleteFolder");
+      actions.querySelector('[data-a="rename"]').onclick = e => { e.stopPropagation(); renameFolder(id); };
+      actions.querySelector('[data-a="delete"]').onclick = e => { e.stopPropagation(); deleteFolder(id); };
+      li.append(actions);
+    }
+    box.append(li);
+  };
+  row("all", t("allNotes"), null, state.notes.length, false);
+  for (const f of state.folders) row(f.id, f.name, f.color, count(n => n.folder_id === f.id), true);
+  const loose = count(n => !n.folder_id);
+  if (state.folders.length && (loose || state.filter === "none")) row("none", t("noFolder"), null, loose, false);
+}
+
+async function createFolder() {
+  const name = (prompt(t("folderNamePrompt")) || "").trim();
+  if (!name) return;
+  const color = FOLDER_COLORS[state.folders.length % FOLDER_COLORS.length];
+  const { data, error } = await sb.from("folders").insert({ name: name.slice(0, 80), color }).select("id,name,color").single();
+  if (error) { toast(`${t("error")}: ${error.message}`, true); return; }
+  state.folders.push(data);
+  sortFolders();
+  setFilter(data.id);
+  fillNoteFolder(state.current?.folder_id || "");
+}
+
+async function renameFolder(id) {
+  const f = state.folders.find(x => x.id === id);
+  if (!f) return;
+  const name = (prompt(t("folderNamePrompt"), f.name) || "").trim();
+  if (!name || name === f.name) return;
+  const { error } = await sb.from("folders").update({ name: name.slice(0, 80) }).eq("id", id);
+  if (error) { toast(`${t("error")}: ${error.message}`, true); return; }
+  f.name = name.slice(0, 80);
+  sortFolders();
+  renderList();
+  fillNoteFolder(state.current?.folder_id || "");
+}
+
+async function deleteFolder(id) {
+  const f = state.folders.find(x => x.id === id);
+  if (!f || !confirm(t("confirmDeleteFolder").replace("{name}", f.name))) return;
+  const { error } = await sb.from("folders").delete().eq("id", id);
+  if (error) { toast(`${t("error")}: ${error.message}`, true); return; }
+  state.folders = state.folders.filter(x => x.id !== id);
+  state.notes.forEach(n => { if (n.folder_id === id) n.folder_id = null; });
+  if (state.current?.folder_id === id) state.current.folder_id = null;
+  sortFolders();
+  setFilter("all");
+  fillNoteFolder(state.current?.folder_id || "");
+}
+
+function sortFolders() {
+  state.folders.sort((a, b) => a.name.localeCompare(b.name, getLang()));
+  try { localStorage.setItem(foldersKey(), JSON.stringify(state.folders)); } catch {}
+}
+
+function fillNoteFolder(value) {
+  const sel = $("#noteFolder");
+  sel.innerHTML = "";
+  const opt = (v, label) => { const o = document.createElement("option"); o.value = v; o.textContent = label; sel.append(o); };
+  opt("", t("noFolder"));
+  for (const f of state.folders) opt(f.id, f.name);
+  opt("__new", "＋ " + t("newFolder"));
+  sel.value = state.folders.some(f => f.id === value) ? value : "";
+}
+
+async function moveCurrentNote(value) {
+  const n = state.current;
+  if (!n) return;
+  if (value === "__new") {
+    const before = state.folders.length;
+    const keepFilter = state.filter;
+    await createFolder();
+    if (state.folders.length === before) { fillNoteFolder(n.folder_id || ""); return; }
+    value = state.filter;            // la nuova cartella appena creata
+    if (keepFilter === "all") setFilter("all");
+  }
+  n.folder_id = value || null;
+  const li = state.notes.find(x => x.id === n.id);
+  if (li) li.folder_id = n.folder_id;
+  fillNoteFolder(n.folder_id || "");
+  renderList();
+  scheduleSave(0);
 }
 
 function setSaveState(text, off = false) {
@@ -737,6 +920,8 @@ function bindUI() {
   $("#signOutBtn").onclick = signOut;
 
   $("#newNoteBtn").onclick = newNote;
+  $("#newFolderBtn").onclick = createFolder;
+  $("#noteFolder").onchange = e => moveCurrentNote(e.target.value);
   $("#searchInput").addEventListener("input", renderList);
   $("#noteTitle").addEventListener("input", () => scheduleSave());
   $("#noteBody").addEventListener("input", () => scheduleSave());
@@ -785,6 +970,7 @@ function bindUI() {
       updateRecUI();
       updateNet();
       renderList();
+      if (state.current) fillNoteFolder(state.current.folder_id || "");
       if (state.current && state.tab === "audio") renderRecordings();
     };
   }

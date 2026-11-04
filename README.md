@@ -1,4 +1,4 @@
-# GPverse Notes · V.0.2.0
+# GPverse Notes · V.0.3.0
 
 Web app per prendere appunti a tastiera, a mano libera (penna o dito) e a voce,
 con trascrizione e riascolto sincronizzato. Un progetto **GPverse**.
@@ -10,7 +10,8 @@ Nessuna build: HTML + JavaScript puro, backend su **Supabase** (piano gratuito).
 2. **SQL Editor → New query**: incolla tutto `supabase/schema.sql` e premi *Run*.
    Crea le tabelle `notes` e `recordings`, le regole di sicurezza (ognuno vede solo i suoi dati)
    e il bucket privato `audio`.
-   Poi, sempre nel SQL Editor, esegui anche `supabase/002_translation.sql` (traduzioni).
+   Poi, sempre nel SQL Editor, esegui anche `supabase/002_translation.sql` (traduzioni)
+   e `supabase/003_folders.sql` (corsi e cartelle), uno alla volta.
 3. **Project Settings → API**: copia *Project URL* e *anon public key* dentro `config.js`.
 
 ## 2. Pubblica l'app su GitHub Pages (HTTPS, serve per il microfono)
@@ -78,6 +79,7 @@ sw.js, manifest       PWA / offline
 vendor/supabase.js    libreria Supabase (inclusa, niente CDN)
 supabase/schema.sql   database e sicurezza
 supabase/002_translation.sql        aggiornamento per le traduzioni
+supabase/003_folders.sql            aggiornamento per corsi e cartelle
 supabase/functions/translate/       proxy DeepL (Edge Function)
 ```
 
