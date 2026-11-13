@@ -2,6 +2,13 @@
 
 Formato versione: **V.maior.minor.patch** (fonte unica: `version.js`).
 
+## V.0.4.0 — 2026-11-13
+- Trascrizione con Whisper direttamente nel browser: pulsante con l'onda sonora su ogni registrazione.
+- Gratis, nessun server, funziona con qualsiasi browser (anche Firefox e Chromium su Linux, dove la trascrizione live non va).
+- Due modelli: Veloce (whisper-base, ~80 MB) e Preciso (whisper-small, ~250 MB); scaricati una sola volta e poi tenuti in cache.
+- Barra di avanzamento con tempo stimato e pulsante Annulla; la lingua è quella scelta per la registrazione.
+- La nuova trascrizione sostituisce quella live (con conferma) e azzera le traduzioni salvate.
+
 ## V.0.3.1 — 2026-11-04
 - Trascrizione live: se il riconoscimento vocale del browser fallisce, l'app mostra il motivo (es. errore "network" su Chromium/Brave/Opera/Edge per Linux) invece di restare muta.
 - Riquadro "Trascrizione live" visibile da subito con lo stato: avvio, in ascolto, interrotta.
@@ -47,4 +54,4 @@ Prima versione.
 - Versione visibile nel footer.
 
 ## Prossime
-- In valutazione — esportazione PDF; ritrascrizione accurata con Whisper nel browser; condivisione note con i colleghi.
+- In valutazione — esportazione PDF; condivisione note con i colleghi; Whisper automatico a fine registrazione.

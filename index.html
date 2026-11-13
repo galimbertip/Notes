@@ -190,7 +190,13 @@
           <div id="liveText" class="live-text"></div>
         </div>
 
-        <h3 class="section-title" data-i18n="recordings"></h3>
+        <div class="rec-head">
+          <h3 class="section-title" data-i18n="recordings"></h3>
+          <span class="spacer"></span>
+          <label class="wh-model"><span data-i18n="whisperModel"></span>
+            <select id="whisperModel"></select></label>
+        </div>
+        <p class="hint muted" data-i18n="whisperHint"></p>
         <div id="recList" class="rec-list"></div>
       </section>
     </div>

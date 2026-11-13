@@ -1,4 +1,4 @@
-# GPverse Notes · V.0.3.1
+# GPverse Notes · V.0.4.0
 
 Web app per prendere appunti a tastiera, a mano libera (penna o dito) e a voce,
 con trascrizione e riascolto sincronizzato. Un progetto **GPverse**.
@@ -55,7 +55,8 @@ riaprire la stessa traduzione non consuma caratteri. La scrittura a mano non vie
 | Funzione | Chrome / Edge (PC, Android) | Safari (iPhone/iPad) | Firefox |
 |---|---|---|---|
 | Testo, mano libera, registrazione | ✅ | ✅ | ✅ |
-| Trascrizione live | ✅ | ✅ (iOS 14.5+) | ❌ (l'audio si registra comunque) |
+| Trascrizione live | ✅ (solo Google Chrome su Linux) | ✅ (iOS 14.5+) | ❌ |
+| Trascrizione Whisper (dopo la registrazione) | ✅ | ✅ | ✅ |
 
 - La trascrizione live usa il riconoscimento vocale del browser (su Chrome passa dai server Google).
 - Su alcuni telefoni Android registrazione e trascrizione insieme possono contendersi il microfono:
@@ -75,6 +76,8 @@ recorder.js           registrazione + trascrizione live
 idb.js                archivio locale (offline e recupero registrazioni)
 i18n.js               lingue dell'interfaccia
 translate.js          traduzione (chiama la Edge Function)
+whisper.js            trascrizione Whisper (audio → testo)
+whisper-worker.js     Whisper in un Web Worker (transformers.js)
 sw.js, manifest       PWA / offline
 vendor/supabase.js    libreria Supabase (inclusa, niente CDN)
 supabase/schema.sql   database e sicurezza

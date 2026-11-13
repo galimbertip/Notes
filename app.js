@@ -4,6 +4,7 @@ import { LANGS, SPEECH_LANGS, detectLang, setLang, getLang, t, applyI18n } from 
 import { Sketch } from "./draw.js";
 import { Recorder, speechSupported, extFor, recoverInterrupted } from "./recorder.js";
 import { idb } from "./idb.js";
+import { MODELS, transcribe, isBusy, whisperLang, getModelChoice, setModelChoice } from "./whisper.js";
 import { TARGETS, defaultTarget, rememberTarget, sourceFromSpeech, sameLanguage, hash, translateTexts } from "./translate.js";
 
 const VERSION = self.GPV_VERSION || "V.?";
@@ -39,6 +40,7 @@ setLang(detectLang());
 syncLangSelects();
 fillSpeechLangs();
 fillTrTargets();
+queueMicrotask(fillWhisperModels);
 updateNet();
 
 const sketch = new Sketch($("#drawCanvas"), $("#canvasWrap"), () => scheduleSave());
@@ -862,15 +864,22 @@ async function renderRecordings() {
 function recItem(r, fmt) {
   const el = document.createElement("div");
   el.className = "rec-item" + (r.pending ? " pending" : "");
+  el.dataset.rec = r.id;
   el.innerHTML = `
     <div class="rec-row">
       <div><div class="r-title"></div><div class="r-sub"></div><div class="r-tr"></div></div>
       <span class="spacer"></span>
+      <button class="icon-btn wh-btn" data-act="whisper"><svg viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg></button>
       <button class="icon-btn" data-act="copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 011-1h9"/></svg></button>
       <button class="icon-btn" data-act="insert"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7M17 15v6M14 18h6"/></svg></button>
       <button class="icon-btn danger" data-act="del"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
     </div>
     <audio controls preload="metadata"></audio>
+    <div class="wh-box" hidden>
+      <div class="wh-row"><span class="wh-label"></span><span class="spacer"></span>
+        <button class="btn ghost small wh-cancel"></button></div>
+      <div class="wh-bar"><i></i></div>
+    </div>
     <div class="transcript"></div>`;
   el.querySelector(".r-title").textContent = fmt.format(new Date(r.created_at));
   el.querySelector(".r-sub").textContent =
@@ -879,6 +888,11 @@ function recItem(r, fmt) {
   el.querySelector('[data-act="copy"]').title = t("copyTranscript");
   el.querySelector('[data-act="insert"]').title = t("insertInText");
   el.querySelector('[data-act="del"]').title = t("deleteRec");
+  el.querySelector('[data-act="whisper"]').title = t("whisperBtn");
+  el.querySelector(".wh-cancel").textContent = t("cancel");
+  el.querySelector('[data-act="whisper"]').onclick = () => runWhisper(r);
+  el.querySelector(".wh-cancel").onclick = () => state.whisper?.cancel?.();
+  if (state.whisper?.recId === r.id) setTimeout(() => paintWhisper(), 0);
 
   const audio = el.querySelector("audio");
   if (r.pending) audio.src = URL.createObjectURL(r.blob);
@@ -920,6 +934,78 @@ function recItem(r, fmt) {
     renderRecordings();
   };
   return el;
+}
+
+/* ═════════ Whisper ═════════ */
+function paintWhisper() {
+  const w = state.whisper;
+  if (!w) return;
+  const box = document.querySelector(`.rec-item[data-rec="${w.recId}"] .wh-box`);
+  if (!box) return;
+  box.hidden = false;
+  const p = w.p || {};
+  let label = t("whisperStarting"), pct = 0;
+  const mb = n => (n / 1048576).toFixed(0);
+  if (p.phase === "download") {
+    pct = p.total ? p.loaded / p.total : 0;
+    label = t("whisperDownload").replace("{pct}", Math.round(pct * 100)).replace("{mb}", `${mb(p.loaded)}/${mb(p.total)} MB`);
+  } else if (p.phase === "decode") {
+    label = t("whisperDecode"); pct = 0;
+  } else if (p.phase === "transcribe") {
+    pct = p.total ? p.done / p.total : 0;
+    const left = p.done && w.t0 ? ((Date.now() - w.t0) / p.done) * (p.total - p.done) : 0;
+    label = t("whisperProgress").replace("{done}", p.done).replace("{total}", p.total)
+      + (left > 5000 ? ` · ${t("whisperLeft").replace("{time}", fmtTime(left))}` : "");
+  }
+  box.querySelector(".wh-label").textContent = label;
+  box.querySelector(".wh-bar i").style.width = `${Math.round(pct * 100)}%`;
+  box.querySelector(".wh-bar").classList.toggle("indet", p.phase === "decode" || !p.phase);
+}
+
+async function runWhisper(r) {
+  if (isBusy() || state.whisper) { toast(t("whisperBusy"), true); return; }
+  if ((r.transcript || []).length && !confirm(t("whisperReplace"))) return;
+  if (state.recording) { toast(t("whisperWhileRec"), true); return; }
+  const noteId = state.current?.id;
+  state.whisper = { recId: r.id, p: null };
+  paintWhisper();
+  try {
+    let blob = r.blob;
+    if (!blob) {
+      const { data, error } = await sb.storage.from("audio").download(r.storage_path);
+      if (error) throw error;
+      blob = data;
+    }
+    const job = await transcribe(blob, {
+      model: getModelChoice(),
+      language: whisperLang(r.speech_lang),
+      onProgress: p => {
+        if (!state.whisper) return;
+        if (p.phase === "device") { state.whisper.device = p.device; return; }
+        if (p.phase === "transcribe" && !state.whisper.t0) state.whisper.t0 = Date.now();
+        state.whisper.p = p;
+        paintWhisper();
+      },
+    });
+    state.whisper.cancel = job.cancel;
+    const segments = await job.promise;
+    if (!segments) { toast(t("whisperCancelled")); return; }
+    if (!segments.length) { toast(t("whisperNothing"), true); return; }
+    if (r.pending) {
+      const item = await idb.get("pending", r.id);
+      if (item) { item.transcript = segments; await idb.put("pending", item); }
+    } else {
+      const { error } = await sb.from("recordings").update({ transcript: segments, translations: {} }).eq("id", r.id);
+      if (error) throw error;
+    }
+    toast(t("whisperDone"));
+  } catch (err) {
+    console.error("whisper", err);
+    toast(`${t("whisperError")}: ${err.message || err}`, true);
+  } finally {
+    state.whisper = null;
+    if (state.current?.id === noteId && state.tab === "audio") renderRecordings();
+  }
 }
 
 function segLine(s, audio) {
@@ -977,6 +1063,10 @@ function bindUI() {
   $("#clearDrawBtn").onclick = () => { if (confirm(t("confirmClear"))) sketch.clear(); };
 
   $("#recBtn").onclick = toggleRecording;
+  const wm = $("#whisperModel");
+  wm.innerHTML = Object.entries(MODELS).map(([k, m]) => `<option value="${k}"></option>`).join("");
+  wm.value = getModelChoice();
+  wm.onchange = e => setModelChoice(e.target.value);
   if (!speechSupported) $("#speechWarn").hidden = false;
 
   $("#menuBtn").onclick = () => { $("#sidebar").classList.add("open"); $("#scrim").classList.add("show"); };
@@ -991,6 +1081,7 @@ function bindUI() {
       updateNet();
       renderList();
       if (state.current) fillNoteFolder(state.current.folder_id || "");
+      fillWhisperModels();
       if (state.current && state.tab === "audio") renderRecordings();
     };
   }
@@ -1048,6 +1139,12 @@ function fillLangSelects() {
   }
 }
 function syncLangSelects() { $("#langSelect").value = getLang(); $("#authLang").value = getLang(); }
+
+function fillWhisperModels() {
+  for (const o of $("#whisperModel").options) {
+    o.textContent = `${t(o.value === "fast" ? "whisperFast" : "whisperAccurate")} (${MODELS[o.value].size})`;
+  }
+}
 
 function fillSpeechLangs() {
   const sel = $("#speechLang");
