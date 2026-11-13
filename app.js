@@ -4,6 +4,7 @@ import { LANGS, SPEECH_LANGS, detectLang, setLang, getLang, t, applyI18n } from 
 import { Sketch } from "./draw.js";
 import { Recorder, speechSupported, extFor, recoverInterrupted } from "./recorder.js";
 import { idb } from "./idb.js";
+import { drawingToPng, buildHtml, printHtml } from "./export.js";
 import { MODELS, transcribe, isBusy, whisperLang, getModelChoice, setModelChoice } from "./whisper.js";
 import { TARGETS, defaultTarget, rememberTarget, sourceFromSpeech, sameLanguage, hash, translateTexts } from "./translate.js";
 
@@ -936,6 +937,113 @@ function recItem(r, fmt) {
   return el;
 }
 
+/* ═════════ Esportazione PDF ═════════ */
+function openExport() {
+  if (!state.current) return;
+  const sel = $("#exTrTarget");
+  sel.innerHTML = Object.entries(TARGETS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+  sel.value = state.tr.target;
+  $("#exTr").checked = state.tr.on;
+  $("#exDraw").checked = (sketch.getData().strokes || []).length > 0;
+  $("#exportDlg").showModal();
+}
+
+async function exportPdf() {
+  const opts = {
+    text: $("#exText").checked, draw: $("#exDraw").checked, rec: $("#exRec").checked,
+    tr: $("#exTr").checked ? $("#exTrTarget").value : null,
+  };
+  $("#exportDlg").close();
+  if (!state.current) return;
+  // la finestra va aperta subito, nel clic, altrimenti il browser la blocca
+  const win = window.open("", "_blank");
+  if (win) win.document.write(`<body style="background:#06090d;color:#2ee6ff;font:15px system-ui;padding:40px">${t("exPreparing")}</body>`);
+  try {
+    await saveNow();
+    const n = state.current;
+    collect();
+    const fmt = new Intl.DateTimeFormat(getLang(), { dateStyle: "long", timeStyle: "short" });
+    const fmtS = new Intl.DateTimeFormat(getLang(), { dateStyle: "short", timeStyle: "short" });
+    let title = n.title || "", body = n.body || "", translatedNote = null, recTranslated = null;
+
+    if (opts.tr && opts.text && (title.trim() || body.trim())) {
+      try {
+        const h = hash(title + "\u0000" + body);
+        n.translations = n.translations || {};
+        let e = n.translations[opts.tr];
+        if (!e || e.h !== h) {
+          const texts = [title, body].filter(x => x.trim());
+          const res = await translateTexts(sb, texts, opts.tr);
+          let i = 0;
+          e = { h, title: title.trim() ? res.translations[i++].text : "", body: body.trim() ? res.translations[i++].text : "",
+            src: res.translations[0]?.detected_source_language, at: Date.now() };
+          n.translations[opts.tr] = e;
+          sb.from("notes").update({ translations: n.translations }).eq("id", n.id).then(() => {}, () => {});
+          showUsage(res.usage);
+        }
+        if (!(e.src && sameLanguage(e.src, opts.tr))) {
+          title = e.title || title; body = e.body || body;
+          translatedNote = `${t("exTranslatedTo")} ${TARGETS[opts.tr]} (DeepL)`;
+        }
+      } catch (err) { toast(trError(err), true); }
+    }
+
+    const recordings = [];
+    if (opts.rec) {
+      let rows = [];
+      try {
+        const { data, error } = await sb.from("recordings").select("*").eq("note_id", n.id).order("created_at");
+        if (error) throw error;
+        rows = data;
+      } catch {}
+      const ids = new Set(rows.map(r => r.id));
+      for (const p of await idb.all("pending")) {
+        if (p.noteId === n.id && !ids.has(p.id)) rows.push({ id: p.id, pending: true, transcript: p.transcript,
+          duration_ms: p.durationMs, speech_lang: p.lang, created_at: new Date(p.createdAt).toISOString(), translations: {} });
+      }
+      rows.sort((a, b) => a.created_at.localeCompare(b.created_at));
+      for (const r of rows) {
+        let segs = (r.transcript || []).map(x => ({ ...x }));
+        if (opts.tr && segs.length && !sameLanguage(sourceFromSpeech(r.speech_lang), opts.tr)) {
+          try {
+            const h = hash(segs.map(x => x.text).join("\u0000"));
+            r.translations = r.translations || {};
+            let c = r.translations[opts.tr];
+            if (!c || c.h !== h) {
+              const res = await translateTexts(sb, segs.map(x => x.text), opts.tr, sourceFromSpeech(r.speech_lang));
+              c = { h, segs: res.translations.map(x => x.text), at: Date.now() };
+              r.translations[opts.tr] = c;
+              if (!r.pending) sb.from("recordings").update({ translations: r.translations }).eq("id", r.id).then(() => {}, () => {});
+              showUsage(res.usage);
+            }
+            segs = segs.map((x, i) => ({ ...x, text: c.segs[i] ?? x.text }));
+            recTranslated = `${t("exTranslatedTo")} ${TARGETS[opts.tr]} (DeepL)`;
+          } catch (err) { toast(trError(err), true); }
+        }
+        recordings.push({ when: fmtS.format(new Date(r.created_at)), duration_ms: r.duration_ms,
+          lang: SPEECH_LANGS[r.speech_lang] || r.speech_lang || "", segments: segs });
+      }
+    }
+
+    const folder = n.folder_id ? state.folders.find(f => f.id === n.folder_id) : null;
+    const html = buildHtml({
+      title, body: opts.text ? body : null, translatedNote, recTranslated,
+      folder: folder ? { name: folder.name, color: folder.color } : null,
+      updatedAt: n.updated_at ? fmt.format(new Date(n.updated_at)) : "",
+      drawingPng: opts.draw ? drawingToPng(sketch.getData()) : null,
+      recordings, version: VERSION, lang: getLang(),
+      labels: {
+        untitled: t("untitled"), text: t("tabText"), drawing: t("tabDraw"), transcripts: t("exTranscripts"),
+        noTranscript: t("noTranscript"), generated: `${t("exGenerated")} ${fmt.format(new Date())}`, printHint: t("exPrintHint"),
+      },
+    });
+    printHtml(html, win);
+  } catch (err) {
+    if (win) win.close();
+    toast(`${t("error")}: ${err.message || err}`, true);
+  }
+}
+
 /* ═════════ Whisper ═════════ */
 function paintWhisper() {
   const w = state.whisper;
@@ -1032,6 +1140,9 @@ function bindUI() {
   $("#noteTitle").addEventListener("input", () => scheduleSave());
   $("#noteBody").addEventListener("input", () => scheduleSave());
   $("#deleteNoteBtn").onclick = deleteNote;
+  $("#exportBtn").onclick = openExport;
+  $("#exportForm").addEventListener("submit", e => { e.preventDefault(); exportPdf(); });
+  $("#exCancel").onclick = () => $("#exportDlg").close();
 
   $$(".tab").forEach(b => (b.onclick = () => switchTab(b.dataset.tab)));
 

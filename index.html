@@ -106,6 +106,9 @@
         <button class="icon-btn" id="trBtn" data-i18n-title="translate">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>
         </button>
+        <button class="icon-btn" id="exportBtn" data-i18n-title="exportPdf">
+          <svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M12 12v6M9 15l3 3 3-3"/></svg>
+        </button>
         <button class="icon-btn danger" id="deleteNoteBtn" data-i18n-title="deleteNote">
           <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
         </button>
@@ -204,6 +207,23 @@
 
   <footer class="ver-footer app-foot">GPverse Notes · <span class="app-version"></span></footer>
 </div>
+
+<dialog id="exportDlg" class="dlg">
+  <form method="dialog" id="exportForm">
+    <h3 data-i18n="exportPdf"></h3>
+    <p class="muted small-text" data-i18n="exportIntro"></p>
+    <label class="check"><input type="checkbox" id="exText" checked><span data-i18n="tabText"></span></label>
+    <label class="check"><input type="checkbox" id="exDraw" checked><span data-i18n="tabDraw"></span></label>
+    <label class="check"><input type="checkbox" id="exRec" checked><span data-i18n="exTranscripts"></span></label>
+    <label class="check"><input type="checkbox" id="exTr"><span data-i18n="translateTo"></span>
+      <select id="exTrTarget"></select></label>
+    <p class="muted small-text" data-i18n="exTrHint"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn ghost" id="exCancel" data-i18n="cancel"></button>
+      <button type="submit" class="btn primary" id="exGo" data-i18n="exCreate"></button>
+    </div>
+  </form>
+</dialog>
 
 <div id="toast" class="toast" role="status"></div>
 

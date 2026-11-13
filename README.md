@@ -1,4 +1,4 @@
-# GPverse Notes · V.0.4.0
+# GPverse Notes · V.0.5.0
 
 Web app per prendere appunti a tastiera, a mano libera (penna o dito) e a voce,
 con trascrizione e riascolto sincronizzato. Un progetto **GPverse**.
@@ -78,6 +78,7 @@ i18n.js               lingue dell'interfaccia
 translate.js          traduzione (chiama la Edge Function)
 whisper.js            trascrizione Whisper (audio → testo)
 whisper-worker.js     Whisper in un Web Worker (transformers.js)
+export.js             esportazione PDF (stampa del browser)
 sw.js, manifest       PWA / offline
 vendor/supabase.js    libreria Supabase (inclusa, niente CDN)
 supabase/schema.sql   database e sicurezza

@@ -2,6 +2,12 @@
 
 Formato versione: **V.maior.minor.patch** (fonte unica: `version.js`).
 
+## V.0.5.0 — 2026-11-13
+- Esportazione in PDF: pulsante nella nota → scegli testo, mano libera, trascrizioni → "Salva come PDF".
+- I disegni vengono convertiti per la carta (sfondo bianco, colori neon resi leggibili).
+- Trascrizioni con i tempi, corso e data della nota, versione dell'app a piè di pagina.
+- Opzione "Traduci in…": PDF direttamente nella lingua scelta (usa le traduzioni DeepL già salvate, o le crea).
+
 ## V.0.4.0 — 2026-11-13
 - Trascrizione con Whisper direttamente nel browser: pulsante con l'onda sonora su ogni registrazione.
 - Gratis, nessun server, funziona con qualsiasi browser (anche Firefox e Chromium su Linux, dove la trascrizione live non va).
@@ -54,4 +60,4 @@ Prima versione.
 - Versione visibile nel footer.
 
 ## Prossime
-- In valutazione — esportazione PDF; condivisione note con i colleghi; Whisper automatico a fine registrazione.
+- In valutazione — condivisione note con i colleghi; Whisper automatico a fine registrazione.
