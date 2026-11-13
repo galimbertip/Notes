@@ -219,6 +219,17 @@ input:focus, select:focus, textarea:focus { border-color: var(--cyan); box-shado
 .wh-bar.indet i { width: 35% !important; animation: indet 1.2s ease-in-out infinite; }
 @keyframes indet { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
 
+.wh-auto { font-size: 13px; }
+.no-tr { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wh-cta { border-color: var(--violet); color: var(--violet); }
+.seg-edit { display: flex; gap: 10px; align-items: flex-start; }
+.seg-edit .ts { font-family: ui-monospace, monospace; font-size: 12px; color: var(--cyan-dim); padding-top: 8px; cursor: pointer; flex: none; }
+.seg-edit .ts:hover { color: var(--cyan); text-decoration: underline; }
+.seg-edit textarea { flex: 1; resize: none; overflow: hidden; background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 8px; line-height: 1.5; outline: none; }
+.rec-item.editing { border-color: var(--cyan-dim); }
+.rec-item.editing .transcript { max-height: none; gap: 6px; }
+
 /* ─ Finestra esportazione ─ */
 .dlg { background: var(--panel); color: var(--text); border: 1px solid var(--cyan-dim); border-radius: 16px; padding: 20px 22px;
   width: min(420px, calc(100vw - 32px)); box-shadow: 0 0 40px rgba(46,230,255,.15); }

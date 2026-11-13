@@ -735,6 +735,25 @@ async function stopRecording() {
   renderLive();
   if (state.current?.id === rec.noteId) renderRecordings();
   flushPending();
+  if (res && res.blob.size && !(res.transcript || []).length) autoWhisper(rec.recId, res);
+}
+
+function autoWhisperOn() {
+  try { return localStorage.getItem("gpv.whisperAuto") !== "0"; } catch { return true; }
+}
+
+async function autoWhisper(recId, res) {
+  if (!autoWhisperOn()) return;
+  // la prima volta avvisa del download del modello
+  let asked = false;
+  try { asked = localStorage.getItem("gpv.whisperAsked") === "1"; } catch {}
+  if (!asked) {
+    const ok = confirm(t("whisperAutoAsk").replace("{size}", MODELS[getModelChoice()].size));
+    try { localStorage.setItem("gpv.whisperAsked", "1"); } catch {}
+    if (!ok) { try { localStorage.setItem("gpv.whisperAuto", "0"); } catch {} $("#whisperAuto").checked = false; return; }
+  }
+  if (state.tab !== "audio") switchTab("audio");
+  runWhisper({ id: recId, pending: true, blob: res.blob, speech_lang: res.lang, transcript: [] }, true);
 }
 
 let flushing = false;
@@ -751,9 +770,10 @@ async function flushPending() {
         const path = `${state.user.id}/${p.id}.${extFor(p.mime)}`;
         const up = await sb.storage.from("audio").upload(path, p.blob, { contentType: p.mime.split(";")[0], upsert: true });
         if (up.error) throw up.error;
+        const fresh = (await idb.get("pending", p.id)) || p;   // Whisper/modifiche fatte nel frattempo
         const { error } = await sb.from("recordings").upsert({
           id: p.id, note_id: p.noteId, storage_path: path, mime_type: p.mime,
-          duration_ms: Math.round(p.durationMs), speech_lang: p.lang, transcript: p.transcript || [],
+          duration_ms: Math.round(p.durationMs), speech_lang: p.lang, transcript: fresh.transcript || [],
           created_at: new Date(p.createdAt).toISOString(),
         });
         if (error) throw error;
@@ -871,6 +891,7 @@ function recItem(r, fmt) {
       <div><div class="r-title"></div><div class="r-sub"></div><div class="r-tr"></div></div>
       <span class="spacer"></span>
       <button class="icon-btn wh-btn" data-act="whisper"><svg viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg></button>
+      <button class="icon-btn" data-act="edit"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg></button>
       <button class="icon-btn" data-act="copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 011-1h9"/></svg></button>
       <button class="icon-btn" data-act="insert"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h7M17 15v6M14 18h6"/></svg></button>
       <button class="icon-btn danger" data-act="del"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
@@ -890,6 +911,8 @@ function recItem(r, fmt) {
   el.querySelector('[data-act="insert"]').title = t("insertInText");
   el.querySelector('[data-act="del"]').title = t("deleteRec");
   el.querySelector('[data-act="whisper"]').title = t("whisperBtn");
+  el.querySelector('[data-act="edit"]').title = t("editTranscript");
+  el.querySelector('[data-act="edit"]').onclick = () => editTranscript(r, el);
   el.querySelector(".wh-cancel").textContent = t("cancel");
   el.querySelector('[data-act="whisper"]').onclick = () => runWhisper(r);
   el.querySelector(".wh-cancel").onclick = () => state.whisper?.cancel?.();
@@ -902,7 +925,13 @@ function recItem(r, fmt) {
 
   const tr = el.querySelector(".transcript");
   const segs = r.transcript || [];
-  if (!segs.length) { tr.innerHTML = `<span class="muted"></span>`; tr.firstChild.textContent = t("noTranscript"); }
+  if (!segs.length) {
+    tr.innerHTML = `<div class="no-tr"><span class="muted"></span><button class="btn small wh-cta"></button></div>`;
+    tr.querySelector(".muted").textContent = t("noTranscript");
+    tr.querySelector(".wh-cta").textContent = t("whisperCta");
+    tr.querySelector(".wh-cta").onclick = () => runWhisper(r);
+    el.querySelector('[data-act="edit"]').hidden = true;
+  }
   const lines = segs.map(s => { const l = segLine(s, audio); tr.append(l); return l; });
   audio.addEventListener("timeupdate", () => {
     const ms = audio.currentTime * 1000;
@@ -1044,6 +1073,60 @@ async function exportPdf() {
   }
 }
 
+/* ═════════ Modifica trascrizione ═════════ */
+function editTranscript(r, el) {
+  const segs = (r.transcript || []).map(s => ({ ...s }));
+  if (!segs.length) return;
+  const tr = el.querySelector(".transcript");
+  el.classList.add("editing");
+  tr.innerHTML = "";
+  const hint = document.createElement("p");
+  hint.className = "hint muted";
+  hint.textContent = t("editHint");
+  tr.append(hint);
+  const inputs = segs.map(s => {
+    const row = document.createElement("div");
+    row.className = "seg-edit";
+    row.innerHTML = `<span class="ts"></span><textarea rows="1"></textarea>`;
+    row.firstChild.textContent = fmtTime(s.t);
+    const ta = row.lastChild;
+    ta.value = s.text;
+    const fit = () => { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; };
+    ta.addEventListener("input", fit);
+    // il clic sull'orario fa sentire quel punto, utile per controllare cosa è stato detto
+    row.firstChild.onclick = () => { const a = el.querySelector("audio"); a.currentTime = s.t / 1000; a.play(); };
+    tr.append(row);
+    requestAnimationFrame(fit);
+    return ta;
+  });
+  const bar = document.createElement("div");
+  bar.className = "dlg-actions";
+  bar.innerHTML = `<button class="btn ghost small" data-a="cancel"></button><button class="btn primary small" data-a="save"></button>`;
+  bar.querySelector('[data-a="cancel"]').textContent = t("cancel");
+  bar.querySelector('[data-a="save"]').textContent = t("save");
+  tr.append(bar);
+  inputs[0]?.focus();
+  bar.querySelector('[data-a="cancel"]').onclick = () => renderRecordings();
+  bar.querySelector('[data-a="save"]').onclick = async () => {
+    const out = segs.map((s, i) => ({ t: s.t, text: inputs[i].value.trim() })).filter(s => s.text);
+    try {
+      await saveTranscript(r, out);
+      toast(t("saved"));
+    } catch (err) { toast(`${t("error")}: ${err.message || err}`, true); return; }
+    renderRecordings();
+  };
+}
+
+/* ═════════ Salvataggio trascrizione ═════════ */
+async function saveTranscript(r, segments) {
+  const item = await idb.get("pending", r.id);
+  if (item) { item.transcript = segments; await idb.put("pending", item); }
+  // anche sul server: se nel frattempo è stata caricata, aggiorna la riga
+  const { error } = await sb.from("recordings").update({ transcript: segments }).eq("id", r.id);
+  if (error && !item) throw error;
+  r.transcript = segments;
+}
+
 /* ═════════ Whisper ═════════ */
 function paintWhisper() {
   const w = state.whisper;
@@ -1070,9 +1153,9 @@ function paintWhisper() {
   box.querySelector(".wh-bar").classList.toggle("indet", p.phase === "decode" || !p.phase);
 }
 
-async function runWhisper(r) {
-  if (isBusy() || state.whisper) { toast(t("whisperBusy"), true); return; }
-  if ((r.transcript || []).length && !confirm(t("whisperReplace"))) return;
+async function runWhisper(r, auto = false) {
+  if (isBusy() || state.whisper) { if (!auto) toast(t("whisperBusy"), true); return; }
+  if (!auto && (r.transcript || []).length && !confirm(t("whisperReplace"))) return;
   if (state.recording) { toast(t("whisperWhileRec"), true); return; }
   const noteId = state.current?.id;
   state.whisper = { recId: r.id, p: null };
@@ -1099,13 +1182,7 @@ async function runWhisper(r) {
     const segments = await job.promise;
     if (!segments) { toast(t("whisperCancelled")); return; }
     if (!segments.length) { toast(t("whisperNothing"), true); return; }
-    if (r.pending) {
-      const item = await idb.get("pending", r.id);
-      if (item) { item.transcript = segments; await idb.put("pending", item); }
-    } else {
-      const { error } = await sb.from("recordings").update({ transcript: segments, translations: {} }).eq("id", r.id);
-      if (error) throw error;
-    }
+    await saveTranscript(r, segments);
     toast(t("whisperDone"));
   } catch (err) {
     console.error("whisper", err);
@@ -1178,6 +1255,10 @@ function bindUI() {
   wm.innerHTML = Object.entries(MODELS).map(([k, m]) => `<option value="${k}"></option>`).join("");
   wm.value = getModelChoice();
   wm.onchange = e => setModelChoice(e.target.value);
+  $("#whisperAuto").checked = autoWhisperOn();
+  $("#whisperAuto").onchange = e => {
+    try { localStorage.setItem("gpv.whisperAuto", e.target.checked ? "1" : "0"); localStorage.setItem("gpv.whisperAsked", "1"); } catch {}
+  };
   if (!speechSupported) $("#speechWarn").hidden = false;
 
   $("#menuBtn").onclick = () => { $("#sidebar").classList.add("open"); $("#scrim").classList.add("show"); };

@@ -2,6 +2,12 @@
 
 Formato versione: **V.maior.minor.patch** (fonte unica: `version.js`).
 
+## V.0.6.0 — 2026-11-13
+- Whisper automatico: se la trascrizione live non produce testo, a fine registrazione parte Whisper da solo (la prima volta chiede conferma per il download del modello). Attivabile/disattivabile nella scheda Audio.
+- Registrazioni senza trascrizione mostrano il pulsante "Trascrivi con Whisper".
+- Trascrizione modificabile: pulsante matita su ogni registrazione, clic sull'orario per riascoltare quel punto, riga svuotata = eliminata. Le correzioni finiscono anche nel PDF e nelle traduzioni.
+- Trascrizioni fatte mentre l'audio è ancora in caricamento non vanno più perse.
+
 ## V.0.5.0 — 2026-11-13
 - Esportazione in PDF: pulsante nella nota → scegli testo, mano libera, trascrizioni → "Salva come PDF".
 - I disegni vengono convertiti per la carta (sfondo bianco, colori neon resi leggibili).
@@ -60,4 +66,4 @@ Prima versione.
 - Versione visibile nel footer.
 
 ## Prossime
-- In valutazione — condivisione note con i colleghi; Whisper automatico a fine registrazione.
+- In valutazione — condivisione note e corsi con i colleghi.
