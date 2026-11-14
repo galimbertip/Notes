@@ -11,7 +11,7 @@ Nessuna build: HTML + JavaScript puro, backend su **Supabase** (piano gratuito).
    Crea le tabelle `notes` e `recordings`, le regole di sicurezza (ognuno vede solo i suoi dati)
    e il bucket privato `audio`.
    Poi, sempre nel SQL Editor, esegui anche `supabase/002_translation.sql` (traduzioni)
-   e `supabase/003_folders.sql` (corsi e cartelle) `supabase/004_sharing.sql` (condivisione) e `supabase/005_realtime.sql` (tempo reale), uno alla volta.
+   e `supabase/003_folders.sql` (corsi e cartelle), `supabase/004_sharing.sql` (condivisione) e `supabase/005_realtime.sql` (tempo reale), uno alla volta.
 3. **Project Settings → API**: copia *Project URL* e *anon public key* dentro `config.js`.
 
 ## 2. Pubblica l'app su GitHub Pages (HTTPS, serve per il microfono)
