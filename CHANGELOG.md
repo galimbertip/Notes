@@ -2,6 +2,15 @@
 
 Formato versione: **V.maior.minor.patch** (fonte unica: `version.js`).
 
+## V.0.7.0 — 2026-11-14
+- Condivisione con i colleghi: una nota (pulsante condividi nella nota) o un intero corso (icona condividi sul corso), per email.
+- Due livelli: "Può vedere" (sola lettura) e "Può modificare" (testo, disegni, registrazioni, correzione trascrizioni).
+- Sezione "Condivisi con me" nella barra laterale; banner "Condivisa da … · sola lettura / puoi modificare" nella nota.
+- Gestione accessi: elenco delle persone, cambio permesso, revoca. Condividendo un corso si condividono anche le note future.
+- Solo il proprietario può eliminare, spostare o ricondividere una nota.
+- Regole di sicurezza verificate su Postgres reale con 34 controlli (`tools/test-rls.mjs`).
+- Richiede `supabase/004_sharing.sql`; senza, l'app funziona come prima e la condivisione resta nascosta.
+
 ## V.0.6.0 — 2026-11-13
 - Whisper automatico: se la trascrizione live non produce testo, a fine registrazione parte Whisper da solo (la prima volta chiede conferma per il download del modello). Attivabile/disattivabile nella scheda Audio.
 - Registrazioni senza trascrizione mostrano il pulsante "Trascrivi con Whisper".
@@ -66,4 +75,4 @@ Prima versione.
 - Versione visibile nel footer.
 
 ## Prossime
-- In valutazione — condivisione note e corsi con i colleghi.
+- In valutazione — modifica in tempo reale a più mani; notifiche quando un collega condivide qualcosa.

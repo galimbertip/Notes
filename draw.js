@@ -99,6 +99,7 @@ export class Sketch {
   }
 
   down(e) {
+    if (this.readOnly) return;               // nota condivisa in sola lettura
     if (e.pointerType === "mouse" && e.button !== 0) return;
     // palmo: se una penna sta già scrivendo ignora i tocchi
     if (this.activePointer !== null && this.activePointer !== e.pointerId) return;

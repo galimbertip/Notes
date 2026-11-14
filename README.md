@@ -1,4 +1,4 @@
-# GPverse Notes · V.0.6.0
+# GPverse Notes · V.0.7.0
 
 Web app per prendere appunti a tastiera, a mano libera (penna o dito) e a voce,
 con trascrizione e riascolto sincronizzato. Un progetto **GPverse**.
@@ -11,7 +11,7 @@ Nessuna build: HTML + JavaScript puro, backend su **Supabase** (piano gratuito).
    Crea le tabelle `notes` e `recordings`, le regole di sicurezza (ognuno vede solo i suoi dati)
    e il bucket privato `audio`.
    Poi, sempre nel SQL Editor, esegui anche `supabase/002_translation.sql` (traduzioni)
-   e `supabase/003_folders.sql` (corsi e cartelle), uno alla volta.
+   e `supabase/003_folders.sql` (corsi e cartelle) e `supabase/004_sharing.sql` (condivisione), uno alla volta.
 3. **Project Settings → API**: copia *Project URL* e *anon public key* dentro `config.js`.
 
 ## 2. Pubblica l'app su GitHub Pages (HTTPS, serve per il microfono)
@@ -31,6 +31,10 @@ Per provarla in locale: `python3 -m http.server 8080` nella cartella e apri `htt
 La registrazione è aperta: ognuno si crea l'account dalla schermata di accesso e conferma l'email.
 Per chiuderla: Supabase → Authentication → Sign In / Providers → disattiva *Allow new users to sign up*,
 e aggiungi gli utenti a mano da Authentication → Users → *Invite*.
+
+**Condivisione (V.0.7.0):** l'accesso alle note condivise si basa sull'email dell'account.
+Tieni attivo *Confirm email* (Authentication → Sign In / Providers → Email): se è spento, chiunque potrebbe
+registrarsi con l'email di un collega e vedere ciò che gli è stato condiviso.
 
 Nota: il servizio email integrato di Supabase invia poche email l'ora. Se i colleghi sono tanti,
 configura un SMTP (Authentication → Emails → SMTP) o disattiva *Confirm email*.
@@ -84,6 +88,8 @@ vendor/supabase.js    libreria Supabase (inclusa, niente CDN)
 supabase/schema.sql   database e sicurezza
 supabase/002_translation.sql        aggiornamento per le traduzioni
 supabase/003_folders.sql            aggiornamento per corsi e cartelle
+supabase/004_sharing.sql            aggiornamento per la condivisione
+tools/test-rls.mjs                  test delle regole di sicurezza su Postgres locale
 supabase/functions/translate/       proxy DeepL (Edge Function)
 ```
 

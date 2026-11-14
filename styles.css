@@ -230,6 +230,29 @@ input:focus, select:focus, textarea:focus { border-color: var(--cyan); box-shado
 .rec-item.editing { border-color: var(--cyan-dim); }
 .rec-item.editing .transcript { max-height: none; gap: 6px; }
 
+/* ─ Condivisione ─ */
+.share-banner { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 18px 8px; padding: 6px 12px; border-radius: 10px;
+  font-size: 13px; color: var(--violet); background: rgba(139,123,255,.10); border: 1px solid rgba(139,123,255,.35); }
+.share-banner svg { width: 16px; height: 16px; }
+.share-banner .sb-role { color: var(--muted); }
+.share-banner .sb-role::before { content: "·"; margin-right: 8px; }
+.share-banner.ro .sb-role { color: #facc15; }
+.n-shared { display: inline-block; margin-left: 8px; padding: 0 6px; border-radius: 6px; font-size: 11px; color: var(--violet);
+  border: 1px solid rgba(139,123,255,.5); }
+.f-shared .f-name { color: var(--violet); }
+.share-what { font-weight: 600; margin: 0 0 4px; word-break: break-word; }
+.share-form { display: flex !important; flex-direction: row !important; gap: 8px; flex-wrap: wrap; }
+.share-form input { flex: 1 1 180px; width: auto; }
+.share-form select { width: auto; }
+.share-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; }
+.share-list li.muted { font-size: 13px; }
+.share-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; background: var(--bg-2); }
+.share-row .sh-email { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.share-row select { width: auto; padding: 3px 6px; font-size: 12px; }
+.dlg h4 { margin: 8px 0 2px; }
+.dlg .dlg-actions { align-items: center; }
+.dlg .msg { margin: 2px 0 0; font-size: 13px; min-height: 0; }
+
 /* ─ Finestra esportazione ─ */
 .dlg { background: var(--panel); color: var(--text); border: 1px solid var(--cyan-dim); border-radius: 16px; padding: 20px 22px;
   width: min(420px, calc(100vw - 32px)); box-shadow: 0 0 40px rgba(46,230,255,.15); }

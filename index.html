@@ -106,6 +106,9 @@
         <button class="icon-btn" id="trBtn" data-i18n-title="translate">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>
         </button>
+        <button class="icon-btn" id="shareBtn" data-i18n-title="shareNote" hidden>
+          <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>
+        </button>
         <button class="icon-btn" id="exportBtn" data-i18n-title="exportPdf">
           <svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6M12 12v6M9 15l3 3 3-3"/></svg>
         </button>
@@ -114,6 +117,10 @@
         </button>
       </div>
 
+      <div class="share-banner" id="shareBanner" hidden>
+        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>
+        <span class="sb-who"></span><span class="sb-role"></span>
+      </div>
       <nav class="tabs" role="tablist">
         <button class="tab active" data-tab="text" role="tab">
           <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span data-i18n="tabText"></span></button>
@@ -224,6 +231,25 @@
       <button type="submit" class="btn primary" id="exGo" data-i18n="exCreate"></button>
     </div>
   </form>
+</dialog>
+
+<dialog id="shareDlg" class="dlg">
+  <h3 id="shareTitle"></h3>
+  <p class="share-what" id="shareWhat"></p>
+  <form id="shareForm" class="share-form">
+    <input type="email" id="shareEmail" required data-i18n-ph="shareEmailPh" autocomplete="off">
+    <select id="shareRole"><option value="view" data-i18n="roleView"></option><option value="edit" data-i18n="roleEdit"></option></select>
+    <button type="submit" class="btn primary small" data-i18n="shareAdd"></button>
+  </form>
+  <p id="shareMsg" class="msg" role="status"></p>
+  <h4 class="section-title" data-i18n="sharedWith"></h4>
+  <ul id="shareList" class="share-list"></ul>
+  <p class="muted small-text" data-i18n="shareHint"></p>
+  <div class="dlg-actions">
+    <button type="button" class="btn ghost small" id="shareCopyLink" data-i18n="copyAppLink"></button>
+    <span class="spacer"></span>
+    <button type="button" class="btn small" id="shareClose" data-i18n="close"></button>
+  </div>
 </dialog>
 
 <div id="toast" class="toast" role="status"></div>

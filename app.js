@@ -25,7 +25,11 @@ const state = {
   signUpMode: false,
   recording: null,      // { recId, noteId }
   tr: { on: false, target: "IT", usage: null, forceRec: false },
-  folders: [],          // [{id,name,color}]
+  folders: [],          // [{id,name,color}] solo i miei corsi
+  sharedFolders: [],    // corsi condivisi con me (per mostrarne il nome)
+  sharingOk: false,     // false finché non è stato eseguito 004_sharing.sql
+  access: 2,            // nota aperta: 2 = posso modificare, 1 = sola lettura
+  shareCtx: null,       // finestra Condividi aperta: { kind, id }
   foldersOk: false,     // false finché non è stato eseguito 003_folders.sql
   filter: "all",        // "all" | "none" | id cartella
 };
@@ -174,7 +178,7 @@ async function signOut() {
 }
 
 /* ═════════ Note ═════════ */
-const LIST_COLS = "id,title,body,updated_at";
+const LIST_COLS = "id,title,body,updated_at,user_id";
 const LIST_COLS_F = LIST_COLS + ",folder_id";
 
 async function fetchNoteList() {
@@ -193,7 +197,7 @@ async function loadNotes() {
     state.notes = await fetchNoteList();
   } catch {
     // offline: usa la cache locale
-    const cached = (await idb.all("notes")).filter(n => n.user_id === state.user.id);
+    const cached = (await idb.all("notes")).filter(n => n.user_id === state.user.id || n.viewer === state.user.id);
     state.notes = cached.sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
   }
   renderList();
@@ -208,7 +212,11 @@ async function loadNotes() {
 
 function showEmpty() { $("#editor").hidden = true; $("#emptyState").hidden = false; }
 
+const isMine = n => !n.user_id || n.user_id === state.user?.id;
+
 function inFilter(n) {
+  if (state.filter === "shared") return !isMine(n);
+  if (!isMine(n)) return false;
   if (!state.foldersOk || state.filter === "all") return true;
   if (state.filter === "none") return !n.folder_id;
   return n.folder_id === state.filter;
@@ -237,8 +245,14 @@ function renderList() {
     li.innerHTML = `<div class="n-title"></div><div class="n-date"></div>`;
     li.querySelector(".n-title").textContent = n.title || t("untitled");
     li.querySelector(".n-date").textContent = n.updated_at ? fmt.format(new Date(n.updated_at)) : "";
-    const f = n.folder_id && state.folders.find(x => x.id === n.folder_id);
-    if (f && (q || state.filter === "all")) {
+    const f = n.folder_id && (state.folders.find(x => x.id === n.folder_id) || state.sharedFolders.find(x => x.id === n.folder_id));
+    if (!isMine(n)) {
+      const tag = document.createElement("span");
+      tag.className = "n-shared";
+      tag.textContent = t("sharedTag");
+      li.querySelector(".n-date").append(tag);
+    }
+    if (f && (q || state.filter === "all" || state.filter === "shared")) {
       const tag = document.createElement("span");
       tag.className = "n-folder";
       tag.style.setProperty("--fc", f.color);
@@ -252,7 +266,7 @@ function renderList() {
 
 async function newNote() {
   await saveNow();
-  const folder_id = state.foldersOk && state.filter !== "all" && state.filter !== "none" ? state.filter : null;
+  const folder_id = state.foldersOk && !["all", "none", "shared"].includes(state.filter) ? state.filter : null;
   const note = {
     id: crypto.randomUUID(), user_id: state.user.id, title: "", body: "", folder_id,
     drawing: { height: 1400, strokes: [] }, updated_at: new Date().toISOString(),
@@ -274,7 +288,7 @@ async function openNote(id) {
     const { data, error } = await sb.from("notes").select("*").eq("id", id).single();
     if (error) throw error;
     note = data;
-    idb.put("notes", note).catch(() => {});
+    idb.put("notes", { ...note, viewer: state.user.id }).catch(() => {});
   } catch {
     note = await idb.get("notes", id);
   }
@@ -297,11 +311,49 @@ function showNote(note) {
   fillNoteFolder(note.folder_id || "");
   sketch.load(note.drawing);
   setSaveState("");
+  state.access = isMine(note) ? 2 : 1;
+  applyAccess();
+  if (!isMine(note)) loadAccess(note);
   renderLive();
   applyTrVisibility();
   if (state.tr.on) setTrStatus("");
   if (state.tr.on && state.tab === "text") translateNote();
   if (state.tab === "audio") renderRecordings();
+}
+
+/* ═════════ Permessi (note condivise) ═════════ */
+async function loadAccess(note) {
+  try {
+    const { data } = await sb.rpc("note_access", { p_note: note.id });
+    if (state.current?.id !== note.id) return;
+    state.access = data >= 2 ? 2 : 1;
+    applyAccess();
+    // chi l'ha condivisa
+    let rows = (await sb.from("shares").select("owner_email,role").eq("note_id", note.id)).data || [];
+    if (!rows.length && note.folder_id) rows = (await sb.from("shares").select("owner_email,role").eq("folder_id", note.folder_id)).data || [];
+    if (state.current?.id === note.id && rows[0]) { state.current.ownerEmail = rows[0].owner_email; applyAccess(); }
+  } catch {}
+}
+
+function applyAccess() {
+  const n = state.current;
+  if (!n) return;
+  const mine = isMine(n), ro = state.access < 2;
+  $("#noteTitle").readOnly = ro;
+  $("#noteBody").readOnly = ro;
+  sketch.readOnly = ro;
+  $(".draw-toolbar").hidden = ro;
+  $(".rec-box").hidden = ro;
+  $("#deleteNoteBtn").hidden = !mine;
+  $("#noteFolder").hidden = !mine || !state.foldersOk;
+  $("#shareBtn").hidden = !mine || !state.sharingOk;
+  const b = $("#shareBanner");
+  b.hidden = mine;
+  if (!mine) {
+    b.querySelector(".sb-who").textContent = t("sharedBy").replace("{who}", n.ownerEmail || t("aColleague"));
+    b.querySelector(".sb-role").textContent = t(ro ? "roleViewLong" : "roleEditLong");
+    b.classList.toggle("ro", ro);
+  }
 }
 
 /* ═════════ Traduzione (DeepL) ═════════ */
@@ -463,7 +515,7 @@ function collect() {
   n.body = $("#noteBody").value;
   n.drawing = sketch.getData();
   const payload = { title: n.title, body: n.body, drawing: n.drawing };
-  if (state.foldersOk) payload.folder_id = n.folder_id || null;
+  if (state.foldersOk && isMine(n)) payload.folder_id = n.folder_id || null;
   return payload;
 }
 
@@ -481,24 +533,33 @@ async function saveNow() {
   state.saveTimer = 0;
   const n = state.current;
   if (!n || !state.user) return;
+  if (!isMine(n) && state.access < 2) return;        // sola lettura
   const payload = collect();
   writeDraft(n.id, payload);
-  const ok = await pushNote(n.id, payload);
+  const ok = await pushNote(n.id, payload, !isMine(n));
   if (ok) {
     n.updated_at = ok.updated_at;
     const li = state.notes.find(x => x.id === n.id);
     if (li) { Object.assign(li, { title: payload.title, body: payload.body, folder_id: n.folder_id || null, updated_at: ok.updated_at }); }
-    idb.put("notes", { ...n }).catch(() => {});
+    idb.put("notes", { ...n, viewer: state.user.id }).catch(() => {});
     if (state.current?.id === n.id) setSaveState(t("saved"));
     renderList();
   } else if (state.current?.id === n.id) {
-    idb.put("notes", { ...n, updated_at: new Date().toISOString() }).catch(() => {});
+    idb.put("notes", { ...n, viewer: state.user.id, updated_at: new Date().toISOString() }).catch(() => {});
     setSaveState(t("offlineSaved"), true);
   }
 }
 
-async function pushNote(id, payload) {
+async function pushNote(id, payload, shared = isSharedId(id)) {
   try {
+    if (shared) {
+      // nota di un collega: solo aggiornamento del contenuto
+      const { title, body, drawing } = payload;
+      const { data, error } = await sb.from("notes").update({ title, body, drawing }).eq("id", id).select("updated_at").single();
+      if (error) throw error;
+      clearDraft(id);
+      return data;
+    }
     if (!state.foldersOk && "folder_id" in payload) { payload = { ...payload }; delete payload.folder_id; }
     let { data, error } = await sb.from("notes")
       .upsert({ id, ...payload }).select("updated_at").single();
@@ -511,6 +572,11 @@ async function pushNote(id, payload) {
     clearDraft(id);
     return data;
   } catch { return null; }
+}
+
+function isSharedId(id) {
+  const n = state.notes.find(x => x.id === id) || (state.current?.id === id ? state.current : null);
+  return !!n && !isMine(n);
 }
 
 const draftKey = id => `gpv.draft.${state.user?.id}.${id}`;
@@ -546,9 +612,10 @@ const filterKey = () => `gpv.filter.${state.user?.id}`;
 
 async function loadFolders() {
   try {
-    const { data, error } = await sb.from("folders").select("id,name,color").order("name");
+    let { data, error } = await sb.from("folders").select("id,name,color,user_id").order("name");
     if (error) throw error;
-    state.folders = data;
+    state.folders = data.filter(f => !f.user_id || f.user_id === state.user.id).map(({ user_id, ...f }) => f);
+    state.sharedFolders = data.filter(f => f.user_id && f.user_id !== state.user.id);
     state.foldersOk = true;
     try { localStorage.setItem(foldersKey(), JSON.stringify(data)); } catch {}
   } catch (err) {
@@ -560,9 +627,13 @@ async function loadFolders() {
       state.foldersOk = state.folders.length > 0;
     }
   }
+  state.sharingOk = false;
+  if (state.foldersOk) {
+    try { const { error } = await sb.from("shares").select("id").limit(1); state.sharingOk = !error; } catch {}
+  }
   let f = "all";
   try { f = localStorage.getItem(filterKey()) || "all"; } catch {}
-  state.filter = f === "all" || f === "none" || state.folders.some(x => x.id === f) ? f : "all";
+  state.filter = ["all", "none", "shared"].includes(f) || state.folders.some(x => x.id === f) ? f : "all";
   $("#folderBox").hidden = !state.foldersOk;
   $("#noteFolder").hidden = !state.foldersOk;
 }
@@ -578,7 +649,8 @@ function renderFolders() {
   const box = $("#folderList");
   if (!state.foldersOk) { box.innerHTML = ""; return; }
   box.innerHTML = "";
-  const count = fn => state.notes.filter(fn).length;
+  const mineNotes = state.notes.filter(isMine);
+  const count = fn => mineNotes.filter(fn).length;
   const row = (id, label, color, n, editable) => {
     const li = document.createElement("li");
     li.className = "f-row" + (state.filter === id ? " active" : "");
@@ -592,9 +664,12 @@ function renderFolders() {
       const actions = document.createElement("span");
       actions.className = "f-actions";
       actions.innerHTML = `
+        <button class="icon-btn sm" data-a="share" ${state.sharingOk ? "" : "hidden"}><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg></button>
         <button class="icon-btn sm" data-a="rename"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg></button>
         <button class="icon-btn sm danger" data-a="delete"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>`;
       actions.querySelector('[data-a="rename"]').title = t("renameFolder");
+      actions.querySelector('[data-a="share"]').title = t("shareFolder");
+      actions.querySelector('[data-a="share"]').onclick = e => { e.stopPropagation(); openShare("folder", id, label); };
       actions.querySelector('[data-a="delete"]').title = t("deleteFolder");
       actions.querySelector('[data-a="rename"]').onclick = e => { e.stopPropagation(); renameFolder(id); };
       actions.querySelector('[data-a="delete"]').onclick = e => { e.stopPropagation(); deleteFolder(id); };
@@ -602,10 +677,85 @@ function renderFolders() {
     }
     box.append(li);
   };
-  row("all", t("allNotes"), null, state.notes.length, false);
+  row("all", t("allNotes"), null, mineNotes.length, false);
   for (const f of state.folders) row(f.id, f.name, f.color, count(n => n.folder_id === f.id), true);
   const loose = count(n => !n.folder_id);
   if (state.folders.length && (loose || state.filter === "none")) row("none", t("noFolder"), null, loose, false);
+  const shared = state.notes.length - mineNotes.length;
+  if (shared || state.filter === "shared") {
+    row("shared", t("sharedWithMe"), "#8b7bff", shared, false);
+    box.lastChild.classList.add("f-shared");
+  }
+}
+
+/* ═════════ Condivisione ═════════ */
+async function openShare(kind, id, name) {
+  if (!state.sharingOk) return;
+  if (kind === "note") await saveNow();
+  state.shareCtx = { kind, id };
+  $("#shareTitle").textContent = t(kind === "note" ? "shareNote" : "shareFolder");
+  $("#shareWhat").textContent = name || t("untitled");
+  $("#shareEmail").value = "";
+  $("#shareRole").value = "view";
+  $("#shareMsg").textContent = "";
+  $("#shareDlg").showModal();
+  renderShares();
+}
+
+async function renderShares() {
+  const ctx = state.shareCtx;
+  const list = $("#shareList");
+  list.innerHTML = `<li class="muted">${t("loading")}</li>`;
+  const { data, error } = await sb.from("shares").select("id,email,role")
+    .eq(ctx.kind === "note" ? "note_id" : "folder_id", ctx.id).order("created_at");
+  if (state.shareCtx !== ctx) return;
+  list.innerHTML = "";
+  if (error) { list.innerHTML = `<li class="msg err"></li>`; list.firstChild.textContent = error.message; return; }
+  if (!data.length) { list.innerHTML = `<li class="muted"></li>`; list.firstChild.textContent = t("notShared"); return; }
+  for (const sh of data) {
+    const li = document.createElement("li");
+    li.className = "share-row";
+    li.innerHTML = `<span class="sh-email"></span>
+      <select><option value="view"></option><option value="edit"></option></select>
+      <button class="icon-btn sm danger"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`;
+    li.querySelector(".sh-email").textContent = sh.email;
+    const sel = li.querySelector("select");
+    sel.options[0].textContent = t("roleView");
+    sel.options[1].textContent = t("roleEdit");
+    sel.value = sh.role;
+    sel.onchange = async () => {
+      const { error } = await sb.from("shares").update({ role: sel.value }).eq("id", sh.id);
+      if (error) toast(`${t("error")}: ${error.message}`, true); else toast(t("saved"));
+    };
+    const del = li.querySelector("button");
+    del.title = t("removeShare");
+    del.onclick = async () => {
+      const { error } = await sb.from("shares").delete().eq("id", sh.id);
+      if (error) { toast(`${t("error")}: ${error.message}`, true); return; }
+      renderShares();
+    };
+    list.append(li);
+  }
+}
+
+async function addShare() {
+  const ctx = state.shareCtx;
+  const email = $("#shareEmail").value.trim().toLowerCase();
+  const msg = $("#shareMsg");
+  msg.className = "msg";
+  if (!email || !$("#shareEmail").checkValidity()) { $("#shareEmail").reportValidity(); return; }
+  if (email === (state.user.email || "").toLowerCase()) { msg.className = "msg err"; msg.textContent = t("shareSelf"); return; }
+  const row = { email, role: $("#shareRole").value, [ctx.kind === "note" ? "note_id" : "folder_id"]: ctx.id };
+  let { error } = await sb.from("shares").insert(row);
+  if (error && (error.code === "23505" || /duplicate|unique/i.test(error.message || ""))) {
+    ({ error } = await sb.from("shares").update({ role: row.role })
+      .eq(ctx.kind === "note" ? "note_id" : "folder_id", ctx.id).eq("email", email));
+  }
+  if (error) { msg.className = "msg err"; msg.textContent = `${t("error")}: ${error.message}`; return; }
+  $("#shareEmail").value = "";
+  msg.className = "msg ok";
+  msg.textContent = t("shareDone").replace("{email}", email);
+  renderShares();
 }
 
 async function createFolder() {
@@ -940,6 +1090,12 @@ function recItem(r, fmt) {
     lines.forEach((l, i) => l.classList.toggle("now", i === idx));
   });
 
+  if (state.access < 2) {
+    for (const a of ["whisper", "edit", "del", "insert"]) el.querySelector(`[data-act="${a}"]`).hidden = true;
+    el.querySelector(".wh-cta")?.remove();
+  } else if (!isMine(state.current) && r.user_id && r.user_id !== state.user.id) {
+    el.querySelector('[data-act="del"]').hidden = true;     // solo il proprietario o chi l'ha registrata
+  }
   if (state.tr.on && segs.length) translateRecording(r, segs, lines, el, state.tr.forceRec);
 
   // copia/inserisce ciò che si vede (originale o tradotto)
@@ -1218,6 +1374,12 @@ function bindUI() {
   $("#noteBody").addEventListener("input", () => scheduleSave());
   $("#deleteNoteBtn").onclick = deleteNote;
   $("#exportBtn").onclick = openExport;
+  $("#shareBtn").onclick = () => state.current && openShare("note", state.current.id, $("#noteTitle").value);
+  $("#shareForm").addEventListener("submit", e => { e.preventDefault(); addShare(); });
+  $("#shareClose").onclick = () => { $("#shareDlg").close(); state.shareCtx = null; };
+  $("#shareCopyLink").onclick = async () => {
+    try { await navigator.clipboard.writeText(appUrl()); toast(t("copied")); } catch { toast(appUrl()); }
+  };
   $("#exportForm").addEventListener("submit", e => { e.preventDefault(); exportPdf(); });
   $("#exCancel").onclick = () => $("#exportDlg").close();
 
