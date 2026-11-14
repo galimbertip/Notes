@@ -37,7 +37,7 @@ Tieni attivo *Confirm email* (Authentication → Sign In / Providers → Email):
 registrarsi con l'email di un collega e vedere ciò che gli è stato condiviso.
 
 Nota: il servizio email integrato di Supabase invia poche email l'ora. Se i colleghi sono tanti,
-configura un SMTP (Authentication → Emails → SMTP) o disattiva *Confirm email*.
+configura un SMTP (Authentication → Emails → SMTP). Non disattivare *Confirm email* se usi la condivisione.
 
 ## 4. Traduzione con DeepL (da V.0.2.0)
 1. Crea un account **DeepL API Free** su https://www.deepl.com/pro-api (500.000 caratteri/mese gratis).
