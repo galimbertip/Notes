@@ -1,4 +1,4 @@
-# GPverse Notes · V.0.7.0
+# GPverse Notes · V.0.8.0
 
 Web app per prendere appunti a tastiera, a mano libera (penna o dito) e a voce,
 con trascrizione e riascolto sincronizzato. Un progetto **GPverse**.
@@ -11,7 +11,7 @@ Nessuna build: HTML + JavaScript puro, backend su **Supabase** (piano gratuito).
    Crea le tabelle `notes` e `recordings`, le regole di sicurezza (ognuno vede solo i suoi dati)
    e il bucket privato `audio`.
    Poi, sempre nel SQL Editor, esegui anche `supabase/002_translation.sql` (traduzioni)
-   e `supabase/003_folders.sql` (corsi e cartelle) e `supabase/004_sharing.sql` (condivisione), uno alla volta.
+   e `supabase/003_folders.sql` (corsi e cartelle) `supabase/004_sharing.sql` (condivisione) e `supabase/005_realtime.sql` (tempo reale), uno alla volta.
 3. **Project Settings → API**: copia *Project URL* e *anon public key* dentro `config.js`.
 
 ## 2. Pubblica l'app su GitHub Pages (HTTPS, serve per il microfono)
@@ -83,12 +83,14 @@ translate.js          traduzione (chiama la Edge Function)
 whisper.js            trascrizione Whisper (audio → testo)
 whisper-worker.js     Whisper in un Web Worker (transformers.js)
 export.js             esportazione PDF (stampa del browser)
+realtime.js           collaborazione in tempo reale (Supabase Realtime)
 sw.js, manifest       PWA / offline
 vendor/supabase.js    libreria Supabase (inclusa, niente CDN)
 supabase/schema.sql   database e sicurezza
 supabase/002_translation.sql        aggiornamento per le traduzioni
 supabase/003_folders.sql            aggiornamento per corsi e cartelle
 supabase/004_sharing.sql            aggiornamento per la condivisione
+supabase/005_realtime.sql           aggiornamento per la collaborazione in tempo reale
 tools/test-rls.mjs                  test delle regole di sicurezza su Postgres locale
 supabase/functions/translate/       proxy DeepL (Edge Function)
 ```

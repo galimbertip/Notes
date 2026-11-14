@@ -253,6 +253,19 @@ input:focus, select:focus, textarea:focus { border-color: var(--cyan); box-shado
 .dlg .dlg-actions { align-items: center; }
 .dlg .msg { margin: 2px 0 0; font-size: 13px; min-height: 0; }
 
+/* ─ Tempo reale ─ */
+.presence { display: flex; align-items: center; }
+.peer { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700;
+  color: #06090d; background: var(--violet); margin-left: -6px; border: 2px solid var(--bg); box-shadow: 0 0 8px rgba(139,123,255,.6);
+  animation: peerIn .3s; }
+.peer:first-child { margin-left: 0; }
+.peer.more { background: var(--panel-2); color: var(--text); box-shadow: none; }
+@keyframes peerIn { from { transform: scale(.5); opacity: 0; } }
+.sync-banner { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 18px 8px; padding: 8px 12px; border-radius: 10px;
+  font-size: 13px; color: #facc15; background: rgba(250,204,21,.08); border: 1px solid rgba(250,204,21,.4); }
+.sync-banner svg { width: 16px; height: 16px; }
+.n-shared.new { color: #06090d; background: var(--violet); border-color: var(--violet); }
+
 /* ─ Finestra esportazione ─ */
 .dlg { background: var(--panel); color: var(--text); border: 1px solid var(--cyan-dim); border-radius: 16px; padding: 20px 22px;
   width: min(420px, calc(100vw - 32px)); box-shadow: 0 0 40px rgba(46,230,255,.15); }

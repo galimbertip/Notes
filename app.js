@@ -4,6 +4,7 @@ import { LANGS, SPEECH_LANGS, detectLang, setLang, getLang, t, applyI18n } from 
 import { Sketch } from "./draw.js";
 import { Recorder, speechSupported, extFor, recoverInterrupted } from "./recorder.js";
 import { idb } from "./idb.js";
+import { startRealtime, joinNote } from "./realtime.js";
 import { drawingToPng, buildHtml, printHtml } from "./export.js";
 import { MODELS, transcribe, isBusy, whisperLang, getModelChoice, setModelChoice } from "./whisper.js";
 import { TARGETS, defaultTarget, rememberTarget, sourceFromSpeech, sameLanguage, hash, translateTexts } from "./translate.js";
@@ -30,6 +31,10 @@ const state = {
   sharingOk: false,     // false finché non è stato eseguito 004_sharing.sql
   access: 2,            // nota aperta: 2 = posso modificare, 1 = sola lettura
   shareCtx: null,       // finestra Condividi aperta: { kind, id }
+  dirty: false,         // modifiche locali non ancora salvate
+  editSeq: 0,
+  remotePending: null,  // versione del collega arrivata mentre stavo scrivendo
+  rtStop: null, rtLive: false, leaveNote: null, newShared: new Set(),
   foldersOk: false,     // false finché non è stato eseguito 003_folders.sql
   filter: "all",        // "all" | "none" | id cartella
 };
@@ -81,6 +86,12 @@ async function onSession(session) {
   await loadNotes();
   flushDrafts();
   flushPending();
+  checkNewShared();
+  if (state.rtStop) state.rtStop();
+  state.rtStop = startRealtime(sb, state.user.id, {
+    note: onRemoteNote, recording: onRemoteRecording, share: onRemoteShare,
+    status: st => { state.rtLive = st === "SUBSCRIBED"; updateNet(); },
+  });
 }
 
 function authMsg(text, kind = "") {
@@ -171,6 +182,9 @@ function appUrl() { return location.origin + location.pathname; }
 async function signOut() {
   if (state.recording) await stopRecording();
   await saveNow();
+  if (state.rtStop) { state.rtStop(); state.rtStop = null; }
+  if (state.leaveNote) { state.leaveNote(); state.leaveNote = null; }
+  state.rtLive = false;
   await sb.auth.signOut();
   state.current = null;
   state.notes = [];
@@ -248,8 +262,8 @@ function renderList() {
     const f = n.folder_id && (state.folders.find(x => x.id === n.folder_id) || state.sharedFolders.find(x => x.id === n.folder_id));
     if (!isMine(n)) {
       const tag = document.createElement("span");
-      tag.className = "n-shared";
-      tag.textContent = t("sharedTag");
+      tag.className = "n-shared" + (state.newShared.has(n.id) ? " new" : "");
+      tag.textContent = t(state.newShared.has(n.id) ? "newTag" : "sharedTag");
       li.querySelector(".n-date").append(tag);
     }
     if (f && (q || state.filter === "all" || state.filter === "shared")) {
@@ -304,6 +318,11 @@ async function openNote(id) {
 
 function showNote(note) {
   state.current = note;
+  state.dirty = false;
+  state.remotePending = null;
+  $("#syncBanner").hidden = true;
+  if (state.newShared.delete(note.id)) markSharedSeen();
+  joinPresence(note);
   $("#emptyState").hidden = true;
   $("#editor").hidden = false;
   $("#noteTitle").value = note.title || "";
@@ -319,6 +338,158 @@ function showNote(note) {
   if (state.tr.on) setTrStatus("");
   if (state.tr.on && state.tab === "text") translateNote();
   if (state.tab === "audio") renderRecordings();
+}
+
+/* ═════════ Tempo reale ═════════ */
+const sameDrawing = (a, b) => JSON.stringify(a || {}) === JSON.stringify(b || {});
+let listTimer = 0;
+function renderListSoon() { clearTimeout(listTimer); listTimer = setTimeout(renderList, 150); }
+
+function onRemoteNote(p) {
+  if (p.eventType === "DELETE") {
+    const id = p.old && p.old.id;
+    if (!id || !state.notes.some(n => n.id === id)) return;
+    state.notes = state.notes.filter(n => n.id !== id);
+    if (state.current?.id === id) { closeCurrent(t("noteRemoved")); }
+    renderListSoon();
+    return;
+  }
+  const row = p.new;
+  if (!row || !row.id) return;
+  const item = { id: row.id, title: row.title, body: row.body, updated_at: row.updated_at, user_id: row.user_id, folder_id: row.folder_id };
+  const i = state.notes.findIndex(n => n.id === row.id);
+  if (i >= 0) Object.assign(state.notes[i], item); else state.notes.push(item);
+  state.notes.sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
+  renderListSoon();
+  if (state.current?.id === row.id) onRemoteCurrent(row);
+}
+
+function onRemoteCurrent(row) {
+  const n = state.current;
+  const same = (row.title || "") === $("#noteTitle").value && (row.body || "") === $("#noteBody").value
+    && sameDrawing(row.drawing, sketch.getData());
+  if (same) { n.updated_at = row.updated_at; if (row.translations) n.translations = row.translations; return; }
+  if (n.updated_at && row.updated_at && row.updated_at <= n.updated_at) return;     // vecchia
+  if (!state.dirty) { applyRemote(row); toast(t("remoteUpdated")); return; }
+  state.remotePending = row;                       // sto scrivendo anch'io: chiedo cosa fare
+  clearTimeout(state.saveTimer);
+  state.saveTimer = 0;
+  setSaveState(t("syncWaiting"), true);
+  $("#syncBanner").hidden = false;
+}
+
+function applyRemote(row) {
+  const n = state.current;
+  if (!n || n.id !== row.id) return;
+  const keep = el => [el.selectionStart, el.selectionEnd, el === document.activeElement];
+  const tSel = keep($("#noteTitle")), bSel = keep($("#noteBody"));
+  $("#noteTitle").value = row.title || "";
+  $("#noteBody").value = row.body || "";
+  for (const [el, [a, b, f]] of [[$("#noteTitle"), tSel], [$("#noteBody"), bSel]]) {
+    if (f) { const L = el.value.length; try { el.setSelectionRange(Math.min(a, L), Math.min(b, L)); } catch {} }
+  }
+  if (!sameDrawing(row.drawing, sketch.getData()) && !sketch.cur) sketch.load(row.drawing);
+  Object.assign(n, { title: row.title, body: row.body, drawing: row.drawing, updated_at: row.updated_at,
+    translations: row.translations || n.translations });
+  clearTimeout(state.saveTimer);
+  state.saveTimer = 0;
+  state.dirty = false;
+  state.remotePending = null;
+  clearDraft(n.id);
+  $("#syncBanner").hidden = true;
+  setSaveState(t("saved"));
+  idb.put("notes", { ...n, viewer: state.user.id }).catch(() => {});
+  if (state.tr.on && state.tab === "text") translateNote();
+}
+
+function closeCurrent(msg) {
+  if (state.leaveNote) { state.leaveNote(); state.leaveNote = null; }
+  clearTimeout(state.saveTimer);
+  state.saveTimer = 0;
+  state.dirty = false;
+  state.current = null;
+  showEmpty();
+  if (msg) toast(msg, true);
+}
+
+let recTimer = 0;
+function onRemoteRecording(p) {
+  const noteId = (p.new && p.new.note_id) || null;
+  if (!state.current || state.tab !== "audio") return;
+  if (noteId && noteId !== state.current.id) return;
+  clearTimeout(recTimer);
+  recTimer = setTimeout(function again() {
+    // non disturbare mentre si corregge una trascrizione o lavora Whisper
+    if (document.querySelector(".rec-item.editing") || state.whisper) { recTimer = setTimeout(again, 2000); return; }
+    if (state.current && state.tab === "audio") renderRecordings();
+  }, 400);
+}
+
+async function onRemoteShare(p) {
+  if (p.eventType === "INSERT" && p.new && p.new.owner_id !== state.user.id) {
+    toast(t("sharedNow").replace("{who}", p.new.owner_email || t("aColleague")));
+  }
+  await loadFolders();
+  await loadNotesListOnly();
+  if (p.eventType === "INSERT") checkNewShared();
+  // accesso revocato alla nota aperta
+  if (state.current && !isMine(state.current) && !state.notes.some(n => n.id === state.current.id)) {
+    closeCurrent(t("accessRevoked"));
+  } else if (state.current && !isMine(state.current)) {
+    loadAccess(state.current);
+  }
+}
+
+function joinPresence(note) {
+  if (state.leaveNote) { state.leaveNote(); state.leaveNote = null; }
+  showPeers([]);
+  if (!sb.channel) return;
+  state.leaveNote = joinNote(sb, note.id, { id: state.user.id, email: state.user.email }, peers => {
+    if (state.current?.id === note.id) showPeers(peers);
+  });
+}
+
+function showPeers(peers) {
+  const box = $("#presence");
+  box.innerHTML = "";
+  box.hidden = !peers.length;
+  for (const email of peers.slice(0, 4)) {
+    const d = document.createElement("span");
+    d.className = "peer";
+    d.textContent = email.slice(0, 1).toUpperCase();
+    d.title = t("peerHere").replace("{who}", email);
+    box.append(d);
+  }
+  if (peers.length > 4) {
+    const d = document.createElement("span");
+    d.className = "peer more";
+    d.textContent = "+" + (peers.length - 4);
+    d.title = peers.slice(4).join(", ");
+    box.append(d);
+  }
+}
+
+// Note condivise con me arrivate dall'ultima visita
+const seenKey = () => `gpv.seenShared.${state.user?.id}`;
+function checkNewShared() {
+  const shared = state.notes.filter(n => !isMine(n)).map(n => n.id);
+  let seen = null;
+  try { seen = JSON.parse(localStorage.getItem(seenKey()) || "null"); } catch {}
+  if (!Array.isArray(seen)) {                      // primo avvio: niente avvisi
+    try { localStorage.setItem(seenKey(), JSON.stringify(shared)); } catch {}
+    return;
+  }
+  const fresh = shared.filter(id => !seen.includes(id) && state.current?.id !== id);
+  fresh.forEach(id => state.newShared.add(id));
+  if (fresh.length) {
+    toast(t("newSharedCount").replace("{n}", fresh.length));
+    renderList();
+  }
+  markSharedSeen();
+}
+function markSharedSeen() {
+  const shared = state.notes.filter(n => !isMine(n) && !state.newShared.has(n.id)).map(n => n.id);
+  try { localStorage.setItem(seenKey(), JSON.stringify(shared)); } catch {}
 }
 
 /* ═════════ Permessi (note condivise) ═════════ */
@@ -524,6 +695,8 @@ function scheduleSave(delay = 900) {
   setSaveState(t("saving"));
   const li = state.notes.find(x => x.id === state.current.id);
   if (li) { li.title = $("#noteTitle").value; li.body = $("#noteBody").value; }
+  state.dirty = true;
+  state.editSeq++;
   clearTimeout(state.saveTimer);
   state.saveTimer = setTimeout(saveNow, delay);
 }
@@ -534,11 +707,16 @@ async function saveNow() {
   const n = state.current;
   if (!n || !state.user) return;
   if (!isMine(n) && state.access < 2) return;        // sola lettura
+  if (!state.dirty) return;                           // niente da salvare
+  const seq = state.editSeq;
   const payload = collect();
   writeDraft(n.id, payload);
+  // conflitto aperto: aspetto la scelta (il testo resta salvato sul dispositivo)
+  if (state.remotePending && state.remotePending.id === n.id) { setSaveState(t("syncWaiting"), true); return; }
   const ok = await pushNote(n.id, payload, !isMine(n));
   if (ok) {
     n.updated_at = ok.updated_at;
+    if (state.current?.id === n.id && state.editSeq === seq) state.dirty = false;
     const li = state.notes.find(x => x.id === n.id);
     if (li) { Object.assign(li, { title: payload.title, body: payload.body, folder_id: n.folder_id || null, updated_at: ok.updated_at }); }
     idb.put("notes", { ...n, viewer: state.user.id }).catch(() => {});
@@ -1442,7 +1620,25 @@ function bindUI() {
 
   window.addEventListener("online", () => { updateNet(); flushDrafts(); flushPending(); });
   window.addEventListener("offline", updateNet);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveNow(); });
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState === "hidden") { saveNow(); return; }
+    // tornando sulla pagina (es. telefono in tasca): recupera le modifiche perse
+    if (!state.user || !navigator.onLine) return;
+    await loadNotesListOnly();
+    if (state.current) {
+      try {
+        const { data } = await sb.from("notes").select("*").eq("id", state.current.id).single();
+        if (data && state.current?.id === data.id) onRemoteCurrent(data);
+      } catch {}
+    }
+  });
+  $("#syncTheirs").onclick = () => { if (state.remotePending) applyRemote(state.remotePending); };
+  $("#syncMine").onclick = () => {
+    state.remotePending = null;
+    $("#syncBanner").hidden = true;
+    state.dirty = true;
+    saveNow();
+  };
   window.addEventListener("beforeunload", e => {
     if (state.saveTimer) saveNow();
     if (state.recording) { e.preventDefault(); e.returnValue = ""; }
@@ -1514,7 +1710,8 @@ function fillSpeechLangs() {
 function updateNet() {
   const on = navigator.onLine;
   const el = $("#netState");
-  el.textContent = t(on ? "online" : "offline");
+  el.textContent = t(on ? "online" : "offline") + (on && state.rtLive ? " · Live" : "");
+  el.title = on && state.rtLive ? t("liveHint") : "";
   el.classList.toggle("off", !on);
 }
 

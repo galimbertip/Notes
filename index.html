@@ -102,6 +102,7 @@
       <div class="editor-head">
         <input id="noteTitle" class="title-input" data-i18n-ph="titlePh">
         <select id="noteFolder" class="note-folder" hidden data-i18n-title="moveToFolder"></select>
+        <span id="presence" class="presence" hidden></span>
         <span id="saveState" class="save-state"></span>
         <button class="icon-btn" id="trBtn" data-i18n-title="translate">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>
@@ -117,6 +118,13 @@
         </button>
       </div>
 
+      <div class="sync-banner" id="syncBanner" hidden>
+        <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0114-5.3L20 9M20 4v5h-5M20 12a8 8 0 01-14 5.3L4 15M4 20v-5h5"/></svg>
+        <span data-i18n="syncConflict"></span>
+        <span class="spacer"></span>
+        <button class="btn small" id="syncTheirs" data-i18n="syncTheirs"></button>
+        <button class="btn ghost small" id="syncMine" data-i18n="syncMine"></button>
+      </div>
       <div class="share-banner" id="shareBanner" hidden>
         <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>
         <span class="sb-who"></span><span class="sb-role"></span>

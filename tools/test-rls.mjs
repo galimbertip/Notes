@@ -20,7 +20,7 @@ grant usage on schema auth, storage, public to authenticated;
 grant execute on all functions in schema auth to authenticated;
 grant all on storage.objects to authenticated;
 `);
-for (const f of ["schema.sql", "002_translation.sql", "003_folders.sql", "004_sharing.sql", "004_sharing.sql"]) {
+for (const f of ["schema.sql", "002_translation.sql", "003_folders.sql", "004_sharing.sql", "004_sharing.sql", "005_realtime.sql", "005_realtime.sql"]) {
   try { await ex(fs.readFileSync(R + f, "utf8").replace(/create extension if not exists pgcrypto;/, "")); console.log("OK  ", f); }
   catch (e) { console.log("FAIL", f, e.message); process.exit(1); }
 }
@@ -119,5 +119,9 @@ await check("updated_at non cambia salvando solo traduzioni", async () => {
   await as("paolo", `update notes set translations='{"EN":{}}' where id='bbbbbbbb-0000-0000-0000-000000000002'`);
   const b = (await as("paolo", `select updated_at from notes where id='bbbbbbbb-0000-0000-0000-000000000002'`)).rows[0].updated_at;
   return +a === +b; }, true);
+console.log("Realtime");
+await check("notes, recordings, shares nella pubblicazione", async () => (await (async () => { await ex("reset role");
+  return db.query(`select tablename from pg_publication_tables where pubname = 'supabase_realtime' order by 1`); })()).rows.map(r => r.tablename),
+  ["notes", "recordings", "shares"]);
 console.log(`\n${pass} ok, ${fail} falliti`);
 process.exit(fail ? 1 : 0);

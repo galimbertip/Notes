@@ -2,6 +2,17 @@
 
 Formato versione: **V.maior.minor.patch** (fonte unica: `version.js`).
 
+## V.0.8.0 — 2026-11-14
+- Collaborazione in tempo reale: le modifiche di un collega (o dello stesso utente da un altro dispositivo) compaiono subito, senza ricaricare.
+- Conflitti gestiti: se arriva una modifica mentre stai scrivendo, un banner chiede "Carica l'altra versione" o "Tieni la mia"; nel frattempo il salvataggio automatico si ferma e il tuo testo resta al sicuro sul dispositivo.
+- Presenza: in alto nella nota compaiono le iniziali dei colleghi che la hanno aperta in quel momento.
+- Avvisi: quando qualcuno condivide una nota o un corso con te lo vedi subito; le note nuove hanno l'etichetta "nuova".
+- Accesso revocato o nota eliminata: la nota aperta si chiude con un avviso.
+- Registrazioni aggiunte da un collega compaiono nella scheda Audio da sole.
+- Indicatore "Online · Live" quando il collegamento in tempo reale è attivo; tornando sulla pagina (es. dal telefono) l'app recupera le modifiche perse.
+- La nota viene salvata solo se è stata modificata (meno scritture e niente aggiornamenti inutili ai colleghi).
+- Richiede `supabase/005_realtime.sql`; senza, l'app funziona come prima (senza aggiornamenti istantanei).
+
 ## V.0.7.0 — 2026-11-14
 - Condivisione con i colleghi: una nota (pulsante condividi nella nota) o un intero corso (icona condividi sul corso), per email.
 - Due livelli: "Può vedere" (sola lettura) e "Può modificare" (testo, disegni, registrazioni, correzione trascrizioni).
@@ -75,4 +86,4 @@ Prima versione.
 - Versione visibile nel footer.
 
 ## Prossime
-- In valutazione — modifica in tempo reale a più mani; notifiche quando un collega condivide qualcosa.
+- In valutazione — modifica simultanea carattere per carattere (stile Google Docs); notifiche push sul telefono.

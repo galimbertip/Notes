@@ -1,4 +1,4 @@
 // GPverse Notes — unica fonte della versione (V.maior.minor.patch).
 // Letta sia dall'app (window) sia dal service worker (importScripts).
-self.GPV_VERSION = "V.0.7.0";
+self.GPV_VERSION = "V.0.8.0";
 self.GPV_BUILD_DATE = "2026-11-14";
